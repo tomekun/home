@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, ExternalLink, Trash2, AlertTriangle, SortAsc, SortDesc, Clock, Calendar, ChevronUp, ChevronDown, GripVertical, Save, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
+import { sanitizeUrl } from '../utils/security';
+
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, activeColor = "purple" }: { icon: any, label: string, active?: boolean, onClick?: () => void, activeColor?: string }) => (
     <div
@@ -219,7 +221,7 @@ export const Servers: React.FC = () => {
                 <div className="flex items-center gap-3 px-2">
                     <div className="p-2 bg-purple-500/20 rounded-lg">
                         <img
-                            src={botStats?.avatar || ""}
+                            src={sanitizeUrl(botStats?.avatar)}
                             alt="Logo"
                             className="w-8 h-8 rounded-full"
                         />
@@ -361,7 +363,7 @@ const ServerCard = ({ guild, isBotIn, showModal, isCustom = false, isDragging = 
         <div className="flex items-center gap-4">
             {guild.icon ? (
                 <img
-                    src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`}
+                    src={sanitizeUrl(`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`)}
                     alt={guild.name}
                     className="w-16 h-16 rounded-2xl shadow-lg border border-white/10 pointer-events-none"
                 />

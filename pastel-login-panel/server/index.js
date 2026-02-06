@@ -3,11 +3,25 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+
 const { getBotStats, leaveGuild, startBot, stopBot, client: getClient } = require('./bot');
 const { getUserSettings, saveUserSettings } = require('./storage');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Security Middleware
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            "img-src": ["'self'", "data:", "https://cdn.discordapp.com", "https://*.supabase.co", "https://cdn.prod.website-files.com"],
+            "connect-src": ["'self'", "http://localhost:3001"]
+        },
+    },
+}));
+app.disable('x-powered-by'); // Explicitly disable to satisfy scanners
 
 // Simple in-memory cache to reduce Discord API load (30s TTL)
 const apiCache = new Map();
@@ -78,6 +92,8 @@ app.get('/api/auth/callback', async (req, res) => {
         // In a real app, you'd create a JWT or session here
         res.cookie('discord_token', access_token, {
             httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // Set to true if served over HTTPS
+            sameSite: 'lax', // CSRF Protection
             path: '/', // サイト全体でクッキーを有効にする
             maxAge: 24 * 60 * 60 * 1000 // 1日間有効
         });

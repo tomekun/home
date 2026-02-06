@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { sanitizeUrl } from '../utils/security';
+
 
 export const Login: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +30,7 @@ export const Login: React.FC = () => {
             >
                 <div className="mb-8 relative inline-block">
                     <img
-                        src={botInfo?.avatar || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984096db2b7dca33a74c9bf/01f395860_logo.png"}
+                        src={sanitizeUrl(botInfo?.avatar || "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984096db2b7dca33a74c9bf/01f395860_logo.png")}
                         alt="Logo"
                         className="w-24 h-24 rounded-full border-2 border-white/20 relative z-10 shadow-2xl"
                     />

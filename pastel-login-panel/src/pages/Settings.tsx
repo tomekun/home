@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, CheckCircle, Save, Languages, SortAsc, RefreshCw, GripVertical, Sun, Moon, Code } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
+import { sanitizeUrl } from '../utils/security';
+
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, activeColor = "purple" }: { icon: any, label: string, active?: boolean, onClick?: () => void, activeColor?: string }) => (
     <div
@@ -103,7 +105,7 @@ export const Settings: React.FC = () => {
             <aside className="sidebar w-64 p-6 flex flex-col gap-8 z-20 bg-white/50 dark:bg-black/40 backdrop-blur-xl">
                 <div className="flex items-center gap-3 px-2">
                     <div className="p-2 bg-purple-500/20 rounded-lg">
-                        <img src={botStats?.avatar || ""} alt="Logo" className="w-8 h-8 rounded-full" />
+                        <img src={sanitizeUrl(botStats?.avatar)} alt="Logo" className="w-8 h-8 rounded-full" />
                     </div>
                     <span className="font-bold text-lg text-primary truncate max-w-[140px]">
                         {botStats?.name || "Bot Panel"}
@@ -279,7 +281,7 @@ export const Settings: React.FC = () => {
                                     {userData?.guilds?.filter((g: any) => g.owner || (parseInt(g.permissions) & 0x8) === 0x8).map((guild: any) => (
                                         <div key={guild.id} className="glass-card p-4 flex items-center gap-4 group hover:border-purple-500/30 transition-all">
                                             {guild.icon ? (
-                                                <img src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`} className="w-10 h-10 rounded-lg" alt="" />
+                                                <img src={sanitizeUrl(`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`)} className="w-10 h-10 rounded-lg" alt="" />
                                             ) : (
                                                 <div className="w-10 h-10 rounded-lg bg-slate-500 flex items-center justify-center text-white font-bold">{guild.name.charAt(0)}</div>
                                             )}

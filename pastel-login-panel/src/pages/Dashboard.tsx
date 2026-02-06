@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, Play, Square, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
+import { sanitizeUrl } from '../utils/security';
+
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, activeColor = "purple" }: { icon: any, label: string, active?: boolean, onClick?: () => void, activeColor?: string }) => (
     <div
@@ -129,7 +131,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-3 px-2">
                     <div className="p-2 bg-purple-500/20 rounded-lg">
                         <img
-                            src={botStats?.avatar || ""}
+                            src={sanitizeUrl(botStats?.avatar)}
                             alt="Logo"
                             className="w-8 h-8 rounded-full"
                         />
@@ -164,7 +166,7 @@ export const Dashboard: React.FC = () => {
                         <div className="relative">
                             {userData?.user?.avatar ? (
                                 <img
-                                    src={`https://cdn.discordapp.com/avatars/${userData.user.id}/${userData.user.avatar}.png`}
+                                    src={sanitizeUrl(`https://cdn.discordapp.com/avatars/${userData.user.id}/${userData.user.avatar}.png`)}
                                     alt="User Avatar"
                                     className="w-14 h-14 rounded-full border-2 border-purple-500/30 shadow-2xl relative z-10"
                                 />
