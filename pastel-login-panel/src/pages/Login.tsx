@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { sanitizeUrl } from '../utils/security';
+import { authenticatedFetch } from '../utils/api';
 
 
 export const Login: React.FC = () => {
@@ -8,7 +9,7 @@ export const Login: React.FC = () => {
     const [botInfo, setBotInfo] = useState<any>(null);
 
     useEffect(() => {
-        fetch('http://localhost:3001/api/stats')
+        authenticatedFetch('http://localhost:3001/api/bot/stats')
             .then(res => res.json())
             .then(data => setBotInfo(data))
             .catch(console.error);

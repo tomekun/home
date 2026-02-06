@@ -4,6 +4,7 @@ const axios = require('axios');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
+const csrf = require('csurf');
 
 const { getBotStats, leaveGuild, startBot, stopBot, client: getClient } = require('./bot');
 const { getUserSettings, saveUserSettings } = require('./storage');
@@ -50,6 +51,26 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+// CSRF Protection
+const csrfProtection = csrf({
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    }
+});
+app.use(csrfProtection);
+
+// Middleware to set CSRF token in a cookie that the frontend can read
+app.use((req, res, next) => {
+    // This cookie is NOT httpOnly so the frontend JS can read it
+    res.cookie('XSRF-TOKEN', req.csrfToken(), {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    });
+    next();
+});
 
 // Discord OAuth2 Endpoints
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;

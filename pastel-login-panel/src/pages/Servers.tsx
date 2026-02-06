@@ -4,6 +4,7 @@ import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Serv
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
 import { sanitizeUrl } from '../utils/security';
+import { authenticatedFetch } from '../utils/api';
 
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, activeColor = "purple" }: { icon: any, label: string, active?: boolean, onClick?: () => void, activeColor?: string }) => (
@@ -62,7 +63,7 @@ export const Servers: React.FC = () => {
 
     const fetchAllData = async () => {
         try {
-            const res = await fetch('http://localhost:3001/api/handshake', { credentials: 'include' });
+            const res = await authenticatedFetch('http://localhost:3001/api/handshake');
             const data = await res.json();
 
             if (data.error === 'Unauthorized') {
@@ -160,11 +161,10 @@ export const Servers: React.FC = () => {
         const prevLoading = loading;
         setLoading(true);
         try {
-            await fetch('http://localhost:3001/api/settings', {
+            await authenticatedFetch('http://localhost:3001/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...settings, customOrder: newOrder }),
-                credentials: 'include'
+                body: JSON.stringify({ ...settings, customOrder: newOrder })
             });
             setIsDirty(false);
             setSettings({ ...settings, customOrder: newOrder });
@@ -195,9 +195,8 @@ export const Servers: React.FC = () => {
             window.open(inviteUrl, '_blank');
             setShowModal(null);
         } else if (showModal.type === 'kick') {
-            await fetch(`http://localhost:3001/api/guilds/${showModal.guild.id}/leave`, {
-                method: 'POST',
-                credentials: 'include'
+            await authenticatedFetch(`http://localhost:3001/api/guilds/${showModal.guild.id}/leave`, {
+                method: 'POST'
             });
             await fetchAllData();
             setShowModal(null);

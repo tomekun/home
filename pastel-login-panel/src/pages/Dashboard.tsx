@@ -4,6 +4,7 @@ import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Serv
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
 import { sanitizeUrl } from '../utils/security';
+import { authenticatedFetch } from '../utils/api';
 
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, activeColor = "purple" }: { icon: any, label: string, active?: boolean, onClick?: () => void, activeColor?: string }) => (
@@ -49,7 +50,7 @@ export const Dashboard: React.FC = () => {
 
     const fetchInitialData = async () => {
         try {
-            const res = await fetch('http://localhost:3001/api/handshake', { credentials: 'include' });
+            const res = await authenticatedFetch('http://localhost:3001/api/handshake');
             if (!res.ok) {
                 if (res.status === 401) navigate('/login');
                 throw new Error('Failed to handshake');
@@ -67,7 +68,7 @@ export const Dashboard: React.FC = () => {
 
     const refreshBotStatus = async () => {
         try {
-            const res = await fetch('http://localhost:3001/api/bot/stats', { credentials: 'include' });
+            const res = await authenticatedFetch('http://localhost:3001/api/bot/stats');
             if (res.ok) {
                 const data = await res.json();
                 setBotStats((prev: any) => ({ ...prev, ...data }));
@@ -90,9 +91,9 @@ export const Dashboard: React.FC = () => {
 
     const handleStartBot = async () => {
         try {
-            const res = await fetch('http://localhost:3001/api/bot/start', { method: 'POST', credentials: 'include' });
+            const res = await authenticatedFetch('http://localhost:3001/api/bot/start', { method: 'POST' });
             if (res.ok) {
-                const handshakeRes = await fetch('http://localhost:3001/api/handshake', { credentials: 'include' });
+                const handshakeRes = await authenticatedFetch('http://localhost:3001/api/handshake');
                 if (handshakeRes.ok) {
                     const data = await handshakeRes.json();
                     setBotStats(data.botStats);
@@ -105,7 +106,7 @@ export const Dashboard: React.FC = () => {
 
     const handleStopBot = async () => {
         try {
-            const res = await fetch('http://localhost:3001/api/bot/stop', { method: 'POST', credentials: 'include' });
+            const res = await authenticatedFetch('http://localhost:3001/api/bot/stop', { method: 'POST' });
             if (res.ok) {
                 setBotStats((prev: any) => ({ ...prev, status: 'offline' }));
             }

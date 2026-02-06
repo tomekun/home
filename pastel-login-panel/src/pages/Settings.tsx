@@ -4,6 +4,7 @@ import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Serv
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
 import { sanitizeUrl } from '../utils/security';
+import { authenticatedFetch } from '../utils/api';
 
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, activeColor = "purple" }: { icon: any, label: string, active?: boolean, onClick?: () => void, activeColor?: string }) => (
@@ -29,7 +30,7 @@ export const Settings: React.FC = () => {
 
     const fetchAllData = async () => {
         try {
-            const res = await fetch('http://localhost:3001/api/handshake', { credentials: 'include' });
+            const res = await authenticatedFetch('http://localhost:3001/api/handshake');
             const data = await res.json();
             if (data.error === 'Unauthorized') {
                 navigate('/login');
@@ -65,11 +66,10 @@ export const Settings: React.FC = () => {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await fetch('http://localhost:3001/api/settings', {
+            await authenticatedFetch('http://localhost:3001/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings),
-                credentials: 'include'
+                body: JSON.stringify(settings)
             });
             setSavedNotice(true);
             setTimeout(() => setSavedNotice(false), 3000);

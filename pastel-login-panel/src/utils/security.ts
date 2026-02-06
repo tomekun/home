@@ -13,8 +13,13 @@ export const sanitizeUrl = (url: string | null | undefined): string => {
     // Basic URL validation
     const trimmedUrl = url.trim();
 
-    // Block javascript: URLs
-    if (trimmedUrl.toLowerCase().startsWith('javascript:')) {
+    // Block dangerous protocols
+    const blockedProtocols = ['javascript:', 'data:', 'vbscript:'];
+    const isBlocked = blockedProtocols.some(protocol =>
+        trimmedUrl.toLowerCase().startsWith(protocol)
+    );
+
+    if (isBlocked) {
         console.warn('Blocked a potentially dangerous URL:', trimmedUrl);
         return '';
     }
