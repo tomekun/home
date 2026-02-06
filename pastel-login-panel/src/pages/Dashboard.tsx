@@ -45,29 +45,39 @@ export const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [showStopModal, setShowStopModal] = useState(false);
 
+    const fetchInitialData = async () => {
+        try {
+            const res = await fetch('http://localhost:3001/api/handshake', { credentials: 'include' });
+            if (!res.ok) {
+                if (res.status === 401) navigate('/login');
+                throw new Error('Failed to handshake');
+            }
+            const data = await res.json();
+            setUserData({ user: data.user, guilds: data.userGuilds });
+            setBotStats(data.botStats);
+            setSettings(data.settings);
+        } catch (err) {
+            console.error('Handshake error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const refreshBotStatus = async () => {
+        try {
+            const res = await fetch('http://localhost:3001/api/bot/stats', { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                setBotStats((prev: any) => ({ ...prev, ...data }));
+            }
+        } catch (err) {
+            // Silently fail for background refresh
+        }
+    };
+
     useEffect(() => {
-        fetch('http://localhost:3001/api/handshake', { credentials: 'include' })
-            .then(res => res.ok ? res.json() : Promise.reject(res.status === 401 ? 'Unauthorized' : 'Failed to handshake'))
-            .then(data => {
-                setUserData({ user: data.user, guilds: data.userGuilds });
-                setBotStats(data.botStats);
-                setSettings(data.settings);
-            })
-            .catch(err => {
-                console.error('Handshake error:', err);
-                if (err === 'Unauthorized') navigate('/login');
-            })
-            .finally(() => setLoading(false));
-
-        const interval = setInterval(() => {
-            fetch('http://localhost:3001/api/bot/stats', { credentials: 'include' })
-                .then(res => res.ok ? res.json() : Promise.reject('Stats error'))
-                .then(data => {
-                    setBotStats((prev: any) => ({ ...prev, ...data }));
-                })
-                .catch(() => { });
-        }, 5000);
-
+        fetchInitialData();
+        const interval = setInterval(refreshBotStatus, 5000);
         return () => clearInterval(interval);
     }, [navigate]);
 

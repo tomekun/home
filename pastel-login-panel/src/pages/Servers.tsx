@@ -19,6 +19,30 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick, activeColor =
 type SortOption = 'join' | 'creation' | 'alphabetical' | 'custom';
 type SortOrder = 'asc' | 'desc';
 
+const sortGuilds = (guilds: any[], sortBy: SortOption, sortOrder: SortOrder, settings: any, customOrderList: any[]) => {
+    if (sortBy === 'custom') return customOrderList;
+
+    let result = [...guilds];
+    if (sortBy === 'creation') {
+        result.sort((a, b) => {
+            const idA = BigInt(a.id);
+            const idB = BigInt(b.id);
+            return idA < idB ? -1 : idA > idB ? 1 : 0;
+        });
+    } else if (sortBy === 'alphabetical') {
+        result.sort((a, b) => {
+            const nameA = (settings?.isFuriganaEnabled !== false && settings?.furigana?.[a.id]) || a.name;
+            const nameB = (settings?.isFuriganaEnabled !== false && settings?.furigana?.[b.id]) || b.name;
+            return nameA.localeCompare(nameB, 'ja', { numeric: true, sensitivity: 'base' });
+        });
+    }
+
+    if (sortOrder === 'desc') {
+        result.reverse();
+    }
+    return result;
+};
+
 export const Servers: React.FC = () => {
     const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
@@ -125,29 +149,9 @@ export const Servers: React.FC = () => {
         setDraggedIndex(null);
     };
 
-    const finalGuilds = useMemo(() => {
-        if (sortBy === 'custom') return customOrderList;
-
-        let result = [...adminGuilds];
-        if (sortBy === 'creation') {
-            result.sort((a, b) => {
-                const idA = BigInt(a.id);
-                const idB = BigInt(b.id);
-                return idA < idB ? -1 : idA > idB ? 1 : 0;
-            });
-        } else if (sortBy === 'alphabetical') {
-            result.sort((a, b) => {
-                const nameA = (settings?.isFuriganaEnabled !== false && settings?.furigana?.[a.id]) || a.name;
-                const nameB = (settings?.isFuriganaEnabled !== false && settings?.furigana?.[b.id]) || b.name;
-                return nameA.localeCompare(nameB, 'ja', { numeric: true, sensitivity: 'base' });
-            });
-        }
-
-        if (sortOrder === 'desc') {
-            result.reverse();
-        }
-        return result;
-    }, [adminGuilds, sortBy, sortOrder, customOrderList, settings]);
+    const finalGuilds = useMemo(() =>
+        sortGuilds(adminGuilds, sortBy, sortOrder, settings, customOrderList),
+        [adminGuilds, sortBy, sortOrder, customOrderList, settings]);
 
     const saveOrder = async () => {
         const newOrder = customOrderList.map(g => g.id);
@@ -263,38 +267,39 @@ export const Servers: React.FC = () => {
                         )}
 
                         <div className="flex items-center gap-2 bg-white/40 dark:bg-black/20 p-1.5 rounded-2xl border border-black/5 dark:border-white/5 backdrop-blur-md">
-                            <button
-                                onClick={() => handleSort('join')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${sortBy === 'join' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-secondary hover:text-primary hover:bg-white/10'}`}
-                            >
-                                <Clock size={16} />
-                                {t.join_order}
-                                {sortBy === 'join' && (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                            </button>
-                            <button
-                                onClick={() => handleSort('creation')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${sortBy === 'creation' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-secondary hover:text-primary hover:bg-white/10'}`}
-                            >
-                                <Calendar size={16} />
-                                {t.creation_order}
-                                {sortBy === 'creation' && (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                            </button>
-                            <button
-                                onClick={() => handleSort('alphabetical')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${sortBy === 'alphabetical' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-secondary hover:text-primary hover:bg-white/10'}`}
-                            >
-                                {sortOrder === 'asc' ? <SortAsc size={16} /> : <SortDesc size={16} />}
-                                {t.alphabetical}
-                                {sortBy === 'alphabetical' && (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                            </button>
+                            <SortButton
+                                type="join"
+                                sortBy={sortBy}
+                                sortOrder={sortOrder}
+                                icon={Clock}
+                                label={t.join_order}
+                                onClick={handleSort}
+                            />
+                            <SortButton
+                                type="creation"
+                                sortBy={sortBy}
+                                sortOrder={sortOrder}
+                                icon={Calendar}
+                                label={t.creation_order}
+                                onClick={handleSort}
+                            />
+                            <SortButton
+                                type="alphabetical"
+                                sortBy={sortBy}
+                                sortOrder={sortOrder}
+                                icon={sortOrder === 'asc' ? SortAsc : SortDesc}
+                                label={t.alphabetical}
+                                onClick={handleSort}
+                            />
                             {settings?.isCustomSortEnabled && (
-                                <button
-                                    onClick={() => handleSort('custom')}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${sortBy === 'custom' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-secondary hover:text-primary hover:bg-white/10'}`}
-                                >
-                                    <GripVertical size={16} />
-                                    {t.custom}
-                                </button>
+                                <SortButton
+                                    type="custom"
+                                    sortBy={sortBy}
+                                    sortOrder={sortOrder}
+                                    icon={GripVertical}
+                                    label={t.custom}
+                                    onClick={handleSort}
+                                />
                             )}
                         </div>
                     </div>
@@ -310,8 +315,8 @@ export const Servers: React.FC = () => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.2 }}
                                 draggable={sortBy === 'custom'}
-                                onDragStart={(e) => onDragStart(e, index)}
-                                onDragOver={(e) => onDragOver(e, index)}
+                                onDragStart={(e: any) => onDragStart(e, index)}
+                                onDragOver={(e: any) => onDragOver(e, index)}
                                 onDragEnd={onDragEnd}
                                 className={sortBy === 'custom' ? 'cursor-move' : ''}
                             >
@@ -329,73 +334,18 @@ export const Servers: React.FC = () => {
                 </div>
 
                 {/* Confirm Modals */}
-                <AnimatePresence>
-                    {showModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setShowModal(null)}
-                                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                            />
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.9, opacity: 0 }}
-                                className="glass-card max-w-sm w-full p-8 relative z-10 text-center shadow-2xl border-white/20"
-                            >
-                                <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${showModal.type === 'invite' ? 'bg-blue-500/20 text-blue-400' :
-                                    showModal.type === 'kick' ? 'bg-red-500/20 text-red-400' :
-                                        'bg-amber-500/20 text-amber-500'
-                                    }`}>
-                                    {showModal.type === 'invite' ? <ExternalLink size={32} /> :
-                                        showModal.type === 'kick' ? <AlertTriangle size={32} /> :
-                                            <Info size={32} />}
-                                </div>
-                                <h3 className="text-xl font-bold text-primary mb-2">
-                                    {showModal.type === 'save_confirm' ? t.save_confirm_title : t.confirm}
-                                </h3>
-                                <div className="text-secondary mb-8">
-                                    {showModal.type === 'save_confirm' ?
-                                        t.save_confirm_desc :
-                                        <>
-                                            {lang === 'ja'
-                                                ? <>本当にサーバー「<strong>{showModal.guild?.name}</strong>」に<br />BOTを{showModal.type === 'invite' ? '招待' : '退場'}させますか？</>
-                                                : <>Are you sure you want to {showModal.type === 'invite' ? 'invite' : 'remove'} the bot <br />{showModal.type === 'invite' ? 'to' : 'from'} <strong>{showModal.guild?.name}</strong>?</>
-                                            }
-                                        </>
-                                    }
-                                </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => {
-                                            if (showModal.type === 'save_confirm') {
-                                                setIsDirty(false);
-                                                setShowModal(null);
-                                                if (pendingNavigate) navigate(pendingNavigate);
-                                            } else {
-                                                setShowModal(null);
-                                            }
-                                        }}
-                                        className="flex-1 px-4 py-2.5 rounded-xl font-bold text-secondary bg-white/5 hover:bg-white/10 transition-colors"
-                                    >
-                                        {showModal.type === 'save_confirm' ? t.leave_anyway : t.cancel}
-                                    </button>
-                                    <button
-                                        onClick={handleConfirm}
-                                        className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-colors ${showModal.type === 'invite' ? 'bg-blue-600 hover:bg-blue-700' :
-                                            showModal.type === 'kick' ? 'bg-red-600 hover:bg-red-700' :
-                                                'bg-green-600 hover:bg-green-700'
-                                            }`}
-                                    >
-                                        {showModal.type === 'save_confirm' ? t.save_and_move : t.execute}
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
+                <ConfirmModal
+                    showModal={showModal}
+                    setShowModal={setShowModal}
+                    t={t}
+                    lang={lang}
+                    onConfirm={handleConfirm}
+                    onCancelAnyway={() => {
+                        setIsDirty(false);
+                        setShowModal(null);
+                        if (pendingNavigate) navigate(pendingNavigate);
+                    }}
+                />
             </main>
         </div>
     );
@@ -452,3 +402,94 @@ const ServerCard = ({ guild, isBotIn, showModal, isCustom = false, isDragging = 
         </div>
     </div>
 );
+
+const SortButton = ({ type, sortBy, sortOrder, icon: Icon, label, onClick }: any) => {
+    const active = sortBy === type;
+    const colorClass = type === 'custom' ? 'bg-purple-600' : 'bg-blue-600';
+    const shadowClass = type === 'custom' ? 'shadow-purple-500/20' : 'shadow-blue-500/20';
+
+    return (
+        <button
+            onClick={() => onClick(type)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${active ? `${colorClass} text-white shadow-lg ${shadowClass}` : 'text-secondary hover:text-primary hover:bg-white/10'}`}
+        >
+            <Icon size={16} />
+            {label}
+            {active && type !== 'custom' && (sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+        </button>
+    );
+};
+
+const ConfirmModal = ({ showModal, setShowModal, t, lang, onConfirm, onCancelAnyway }: any) => {
+    if (!showModal) return null;
+
+    const isInvite = showModal.type === 'invite';
+    const isKick = showModal.type === 'kick';
+    const isSave = showModal.type === 'save_confirm';
+
+    const getIcon = () => {
+        if (isInvite) return <ExternalLink size={32} />;
+        if (isKick) return <AlertTriangle size={32} />;
+        return <Info size={32} />;
+    };
+
+    const getIconColorClass = () => {
+        if (isInvite) return 'bg-blue-500/20 text-blue-400';
+        if (isKick) return 'bg-red-500/20 text-red-400';
+        return 'bg-amber-500/20 text-amber-500';
+    };
+
+    const getConfirmButtonClass = () => {
+        if (isInvite) return 'bg-blue-600 hover:bg-blue-700';
+        if (isKick) return 'bg-red-600 hover:bg-red-700';
+        return 'bg-green-600 hover:bg-green-700';
+    };
+
+    return (
+        <AnimatePresence>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowModal(null)}
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                />
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="glass-card max-w-sm w-full p-8 relative z-10 text-center shadow-2xl border-white/20"
+                >
+                    <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${getIconColorClass()}`}>
+                        {getIcon()}
+                    </div>
+                    <h3 className="text-xl font-bold text-primary mb-2">
+                        {isSave ? t.save_confirm_title : t.confirm}
+                    </h3>
+                    <div className="text-secondary mb-8">
+                        {isSave ? t.save_confirm_desc : (
+                            lang === 'ja'
+                                ? <>本当にサーバー「<strong>{showModal.guild?.name}</strong>」に<br />BOTを{isInvite ? '招待' : '退場'}させますか？</>
+                                : <>Are you sure you want to {isInvite ? 'invite' : 'remove'} the bot <br />{isInvite ? 'to' : 'from'} <strong>{showModal.guild?.name}</strong>?</>
+                        )}
+                    </div>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => isSave ? onCancelAnyway() : setShowModal(null)}
+                            className="flex-1 px-4 py-2.5 rounded-xl font-bold text-secondary bg-white/5 hover:bg-white/10 transition-colors"
+                        >
+                            {isSave ? t.leave_anyway : t.cancel}
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-colors ${getConfirmButtonClass()}`}
+                        >
+                            {isSave ? t.save_and_move : t.execute}
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        </AnimatePresence>
+    );
+};
