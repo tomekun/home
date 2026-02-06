@@ -9,7 +9,10 @@ const getCookie = (name: string): string | null => {
     return null;
 };
 
+const API_BASE_URL = 'http://localhost:3001';
+
 export const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
     const csrfToken = getCookie('XSRF-TOKEN');
 
     const headers = new Headers(options.headers || {});
@@ -17,7 +20,7 @@ export const authenticatedFetch = async (url: string, options: RequestInit = {})
         headers.set('X-CSRF-Token', csrfToken);
     }
 
-    return fetch(url, {
+    return fetch(fullUrl, {
         ...options,
         headers,
         credentials: 'include',

@@ -1,8 +1,17 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, PermissionFlagsBits, UserFlagsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const {
+    getBlacklist,
+    getRecentBans,
+    addRecentBan,
+    getSuspiciousBots,
+    saveSuspiciousBots,
+    getBypassList,
+    addToBypassList
+} = require('./storage');
 
 let client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration],
 });
 
 let botStats = {
@@ -40,20 +49,149 @@ const setupClientEvents = (c) => {
     };
 
     c.on('interactionCreate', async (interaction) => {
-        if (!interaction.isChatInputCommand()) return;
+        if (interaction.isChatInputCommand()) {
+            if (interaction.commandName === 'ping') {
+                await interaction.reply('pong');
+            }
+        } else if (interaction.isButton()) {
+            const [action, guildId, targetUserId] = interaction.customId.split(':');
 
-        if (interaction.commandName === 'ping') {
-            await interaction.reply('pong');
+            if (action === 'bypass_allow') {
+                try {
+                    const guild = await c.guilds.fetch(guildId);
+                    if (!guild) return await interaction.reply({ content: 'サーバーが見つかりませんでした。', ephemeral: true });
+
+                    // Add to bypass and unban
+                    addToBypassList(guildId, targetUserId);
+                    await guild.members.unban(targetUserId, 'Owner approved via Dashboard Alert').catch(e => console.error('Unban failed:', e));
+
+                    await interaction.update({
+                        content: interaction.message.content + '\n\n✅ **承認されました。** ユーザーをリストから除外し、BANを解除しました。',
+                        components: []
+                    });
+                } catch (e) {
+                    console.error(e);
+                    await interaction.reply({ content: 'エラーが発生しました。', ephemeral: true });
+                }
+            } else if (action === 'bypass_deny') {
+                await interaction.update({
+                    content: interaction.message.content + '\n\n❌ **拒否されました。** ユーザーはBAN状態のまま維持されます。',
+                    components: []
+                });
+            }
         }
     });
 
-    c.once('ready', onReady);
+    c.on('guildMemberAdd', async (member) => {
+        const blacklist = getBlacklist();
+        const bypassList = getBypassList(member.guild.id);
+
+        if (blacklist.includes(member.id) && !bypassList.includes(member.id)) {
+            try {
+                // Determine if we should notify
+                const owner = await member.guild.fetchOwner();
+
+                // Ban the user
+                await member.ban({ reason: '[SYSTEM] Global Blacklisted User Detected.' });
+
+                // Construct Buttons
+                const row = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`bypass_allow:${member.guild.id}:${member.id}`)
+                            .setLabel('参加を許可する')
+                            .setStyle(ButtonStyle.Success),
+                        new ButtonBuilder()
+                            .setCustomId(`bypass_deny:${member.guild.id}:${member.id}`)
+                            .setLabel('拒否する')
+                            .setStyle(ButtonStyle.Danger),
+                    );
+
+                // Notify owner with buttons
+                await owner.send({
+                    content: `【セキュリティアラート】ブラックリストユーザー **${member.user.tag}** (${member.id}) が **${member.guild.name}** に参加しようとしました。\nシステムにより自動的にBANされました。このユーザーの参加を例外的に許可しますか？`,
+                    components: [row]
+                }).catch(() => console.log('Could not DM owner'));
+
+            } catch (err) {
+                console.error('Error handling blacklisted user join:', err);
+            }
+        }
+    });
+
+    c.on('guildBanAdd', async (ban) => {
+        try {
+            // Attempt to fetch more details if partial
+            if (ban.partial) await ban.fetch();
+
+            addRecentBan({
+                userId: ban.user.id,
+                username: ban.user.username,
+                displayName: ban.user.globalName || ban.user.username,
+                avatar: ban.user.displayAvatarURL(),
+                guildId: ban.guild.id,
+                guildName: ban.guild.name,
+                reason: ban.reason || 'No reason provided'
+            });
+            console.log(`[BOT] Recorded ban for ${ban.user.tag} in ${ban.guild.name}`);
+        } catch (err) {
+            console.error('Error handling guildBanAdd:', err);
+        }
+    });
+
+    const scanForSuspiciousBots = async () => {
+        if (!c.isReady()) return;
+        const suspicious = [];
+        for (const [_, guild] of c.guilds.cache) {
+            try {
+                const members = await guild.members.fetch();
+                const bots = members.filter(m => m.user.bot && m.id !== c.user.id);
+
+                for (const [_, bot] of bots) {
+                    // Unverified bots with high permissions (Administrator)
+                    // Note: bot.permissions handles member permissions in the guild
+                    const isAdmin = bot.permissions.has(PermissionFlagsBits.Administrator);
+
+                    // Check if the bot is verified
+                    // UserFlagsBitField.Flags.VerifiedBot is the correct bit check in v14
+                    const isVerified = bot.user.flags?.has(UserFlagsBitField.Flags.VerifiedBot);
+
+                    if (!isVerified && isAdmin) {
+                        suspicious.push({
+                            id: bot.id,
+                            username: bot.user.username,
+                            avatar: bot.user.displayAvatarURL(),
+                            guildName: guild.name,
+                            guildId: guild.id,
+                            reason: 'Unverified bot with Administrator permissions'
+                        });
+                    }
+                }
+            } catch (e) {
+                // Ignore errors picking up guild members
+            }
+        }
+        saveSuspiciousBots(suspicious);
+    };
+
+    c.once('ready', (readyClient) => {
+        onReady(readyClient);
+        // Periodic scans
+        scanForSuspiciousBots();
+        setInterval(scanForSuspiciousBots, 30 * 60 * 1000); // Every 30 mins
+    });
 };
 
 setupClientEvents(client);
 
 if (process.env.DISCORD_BOT_TOKEN) {
-    client.login(process.env.DISCORD_BOT_TOKEN).catch(console.error);
+    try {
+        client.login(process.env.DISCORD_BOT_TOKEN).catch(err => {
+            console.error('[BOT] Error during initial login:', err.message);
+        });
+    } catch (err) {
+        console.error('[BOT] Synchronous error during login:', err.message);
+    }
 }
 
 const getBotStats = async () => {
@@ -67,10 +205,16 @@ const getBotStats = async () => {
             userCount: client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0),
             name: app.name,
             avatar: client.user.displayAvatarURL(),
+            recentBans: getRecentBans(),
+            suspiciousBots: getSuspiciousBots()
         };
     } catch (error) {
         console.error('Error fetching bot stats:', error);
-        return botStats;
+        return {
+            ...botStats,
+            recentBans: getRecentBans(),
+            suspiciousBots: getSuspiciousBots()
+        };
     }
 };
 
@@ -149,24 +293,42 @@ const stopBot = async () => {
     }
 };
 
-// Handle terminal commands
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', async (data) => {
-    const cmd = data.trim().toLowerCase();
-    if (cmd === 'start') {
-        console.log('[SYS] Starting bot from terminal...');
-        await startBot();
-    } else if (cmd === 'stop') {
-        await stopBot();
-    } else if (cmd === 'status') {
-        console.log(`[SYS] Bot Status: ${botStats.status}`);
-        console.log(`[SYS] Guilds: ${botStats.guildCount}`);
-    } else if (cmd === 'exit') {
-        console.log('[SYS] Exiting process...');
-        process.exit(0);
-    } else if (cmd !== '') {
-        console.log(`[SYS] Unknown command: ${cmd}`);
-    }
-});
+// Only handle terminal commands if it's a TTY
+if (process.stdin.isTTY) {
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', async (data) => {
+        const cmd = data.trim().toLowerCase();
+        if (cmd === 'start') {
+            console.log('[SYS] Starting bot from terminal...');
+            await startBot();
+        } else if (cmd === 'stop') {
+            await stopBot();
+        } else if (cmd === 'status') {
+            console.log(`[SYS] Bot Status: ${botStats.status}`);
+            console.log(`[SYS] Guilds: ${botStats.guildCount}`);
+        } else if (cmd === 'exit') {
+            console.log('[SYS] Exiting process...');
+            process.exit(0);
+        } else if (cmd !== '') {
+            console.log(`[SYS] Unknown command: ${cmd}`);
+        }
+    });
+}
 
-module.exports = { getBotStats, leaveGuild, startBot, stopBot, client: () => client };
+const resolveUser = async (userId) => {
+    if (!client.isReady()) return { id: userId, username: 'Bot Offline', displayName: 'Bot Offline', avatar: null };
+    try {
+        const user = await client.users.fetch(userId);
+        return {
+            id: user.id,
+            username: user.username,
+            displayName: user.globalName || user.username,
+            avatar: user.displayAvatarURL(),
+            bot: user.bot
+        };
+    } catch (e) {
+        return { id: userId, username: 'Unknown User', displayName: 'Unknown', avatar: null };
+    }
+};
+
+module.exports = { getBotStats, leaveGuild, startBot, stopBot, client: () => client, resolveUser };

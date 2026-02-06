@@ -60,5 +60,56 @@
     "isDevModeEnabled": true,
     "theme": "light",
     "isFuriganaEnabled": true
-  }
+  },
+  "suspiciousBots": [
+    {
+      "id": "1462314722438418444",
+      "username": "リーパにゃん",
+      "avatar": "https://cdn.discordapp.com/avatars/1462314722438418444/473f7dbbd6a7df39c650980a43ee7da5.webp",
+      "guildName": "Webテスト用",
+      "guildId": "1468841076029788312",
+      "reason": "Unverified bot with Administrator permissions"
+    }
+  ],
+  "serverBypasses": {
+    "1469372893178626333": [
+      "1462314722438418444"
+    ]
+  },
+  "recentBans": [
+    {
+      "userId": "1462314722438418444",
+      "username": "リーパにゃん",
+      "displayName": "リーパにゃん",
+      "avatar": "https://cdn.discordapp.com/avatars/1462314722438418444/473f7dbbd6a7df39c650980a43ee7da5.webp",
+      "guildId": "1469372893178626333",
+      "guildName": "WebTest2",
+      "reason": "[SYSTEM] Global Blacklisted User Detected.",
+      "timestamp": 1770396460628
+    },
+    {
+      "userId": "1462314722438418444",
+      "username": "リーパにゃん",
+      "displayName": "リーパにゃん",
+      "avatar": "https://cdn.discordapp.com/avatars/1462314722438418444/473f7dbbd6a7df39c650980a43ee7da5.webp",
+      "guildId": "1469372893178626333",
+      "guildName": "WebTest2",
+      "reason": "[SYSTEM] Global Blacklisted User Detected.",
+      "timestamp": 1770396271445
+    },
+    {
+      "userId": "1368890121327349870",
+      "username": "otonoame_neu",
+      "displayName": "音雨",
+      "avatar": "https://cdn.discordapp.com/avatars/1368890121327349870/a2ae46d86cebccb235109009daa40db4.webp",
+      "guildId": "1468841076029788312",
+      "guildName": "Webテスト用",
+      "reason": "No reason provided",
+      "timestamp": 1770393831298
+    }
+  ],
+  "globalBlacklist": [
+    "1462314722438418444",
+    "1368890121327349870"
+  ]
 }

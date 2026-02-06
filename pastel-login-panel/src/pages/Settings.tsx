@@ -105,7 +105,13 @@ export const Settings: React.FC = () => {
             <aside className="sidebar w-64 p-6 flex flex-col gap-8 z-20 bg-white/50 dark:bg-black/40 backdrop-blur-xl">
                 <div className="flex items-center gap-3 px-2">
                     <div className="p-2 bg-purple-500/20 rounded-lg">
-                        <img src={sanitizeUrl(botStats?.avatar)} alt="Logo" className="w-8 h-8 rounded-full" />
+                        {botStats?.avatar ? (
+                            <img src={sanitizeUrl(botStats.avatar)} alt="Logo" className="w-8 h-8 rounded-full" />
+                        ) : (
+                            <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500">
+                                <Server size={18} />
+                            </div>
+                        )}
                     </div>
                     <span className="font-bold text-lg text-primary truncate max-w-[140px]">
                         {botStats?.name || "Bot Panel"}
@@ -115,7 +121,7 @@ export const Settings: React.FC = () => {
                 <nav className="flex flex-col gap-2 flex-1">
                     <SidebarItem icon={LayoutDashboard} label={t.dashboard} onClick={() => navigate('/dashboard')} />
                     <SidebarItem icon={Server} label={t.server_management} onClick={() => navigate('/servers')} />
-                    <SidebarItem icon={Users} label={t.user_management} />
+                    <SidebarItem icon={Users} label={t.user_management} onClick={() => navigate('/users')} />
                     <SidebarItem icon={MessageSquare} label={t.auto_response} />
                     <SidebarItem icon={Shield} label={t.security} />
                     <SidebarItem icon={Activity} label={t.stats} />

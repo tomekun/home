@@ -1,11 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, Play, Square, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, Play, Square, AlertTriangle, Copy, Ban, UserX, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
 import { sanitizeUrl } from '../utils/security';
 import { authenticatedFetch } from '../utils/api';
 
+interface BanInfo {
+    userId: string;
+    username: string;
+    displayName: string;
+    avatar: string | null;
+    guildId: string;
+    guildName: string;
+    timestamp: number;
+}
+
+interface SuspiciousBot {
+    id: string;
+    username: string;
+    avatar: string | null;
+    guildName: string;
+    guildId: string;
+    reason: string;
+}
 
 const SidebarItem = ({ icon: Icon, label, active = false, onClick, activeColor = "purple" }: { icon: any, label: string, active?: boolean, onClick?: () => void, activeColor?: string }) => (
     <div
@@ -40,17 +58,73 @@ const StatCard = ({ label, value, icon: Icon, color }: { label: string, value: s
     );
 };
 
+const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        onClick={onClose}
+        className={`fixed bottom-10 right-10 z-[100] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-bold pointer-events-auto cursor-pointer ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
+    >
+        {type === 'success' ? <CheckCircle size={24} /> : <XCircle size={24} />}
+        {message}
+    </motion.div>
+);
+
+const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "Confirm", confirmColor = "red" }: any) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={onCancel}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="glass-card max-w-sm w-full p-8 relative z-10 text-center shadow-2xl border-white/20"
+            >
+                <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 bg-${confirmColor}-500/20 text-${confirmColor}-500`}>
+                    <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-primary mb-2">{title}</h3>
+                <p className="text-secondary mb-8 leading-relaxed">{message}</p>
+                <div className="flex gap-3">
+                    <button
+                        onClick={onCancel}
+                        className="flex-1 px-4 py-2.5 rounded-xl font-bold text-secondary bg-white/5 hover:bg-white/10 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-white transition-colors bg-${confirmColor}-600 hover:bg-${confirmColor}-700`}
+                    >
+                        {confirmText}
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
 export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
     const [botStats, setBotStats] = useState<any>(null);
     const [settings, setSettings] = useState<any>(null);
+    const [blacklist, setBlacklist] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showStopModal, setShowStopModal] = useState(false);
+    const [modal, setModal] = useState<{ isOpen: boolean, type: 'stop' | 'blacklist' | 'remove_blacklist', data?: any } | null>(null);
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
     const fetchInitialData = async () => {
         try {
-            const res = await authenticatedFetch('http://localhost:3001/api/handshake');
+            const res = await authenticatedFetch('/api/handshake');
             if (!res.ok) {
                 if (res.status === 401) navigate('/login');
                 throw new Error('Failed to handshake');
@@ -59,6 +133,13 @@ export const Dashboard: React.FC = () => {
             setUserData({ user: data.user, guilds: data.userGuilds });
             setBotStats(data.botStats);
             setSettings(data.settings);
+
+            // Fetch detailed blacklist
+            const blRes = await authenticatedFetch('/api/blacklist');
+            if (blRes.ok) {
+                const blData = await blRes.json();
+                setBlacklist(Array.isArray(blData) ? blData : []);
+            }
         } catch (err) {
             console.error('Handshake error:', err);
         } finally {
@@ -68,7 +149,7 @@ export const Dashboard: React.FC = () => {
 
     const refreshBotStatus = async () => {
         try {
-            const res = await authenticatedFetch('http://localhost:3001/api/bot/stats');
+            const res = await authenticatedFetch('/api/bot/stats');
             if (res.ok) {
                 const data = await res.json();
                 setBotStats((prev: any) => ({ ...prev, ...data }));
@@ -84,16 +165,27 @@ export const Dashboard: React.FC = () => {
         return () => clearInterval(interval);
     }, [navigate]);
 
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => setToast(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast]);
+
     const lang = settings?.language || 'ja';
     const t = translations[lang] || translations.ja;
 
     const handleLogout = () => { navigate('/login'); };
 
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+    };
+
     const handleStartBot = async () => {
         try {
-            const res = await authenticatedFetch('http://localhost:3001/api/bot/start', { method: 'POST' });
+            const res = await authenticatedFetch('/api/bot/start', { method: 'POST' });
             if (res.ok) {
-                const handshakeRes = await authenticatedFetch('http://localhost:3001/api/handshake');
+                const handshakeRes = await authenticatedFetch('/api/handshake');
                 if (handshakeRes.ok) {
                     const data = await handshakeRes.json();
                     setBotStats(data.botStats);
@@ -104,16 +196,58 @@ export const Dashboard: React.FC = () => {
         }
     };
 
-    const handleStopBot = async () => {
-        try {
-            const res = await authenticatedFetch('http://localhost:3001/api/bot/stop', { method: 'POST' });
-            if (res.ok) {
-                setBotStats((prev: any) => ({ ...prev, status: 'offline' }));
+    const handleConfirmAction = async () => {
+        if (!modal) return;
+
+        if (modal.type === 'stop') {
+            try {
+                const res = await authenticatedFetch('/api/bot/stop', { method: 'POST' });
+                if (res.ok) {
+                    setBotStats((prev: any) => ({ ...prev, status: 'offline' }));
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setModal(null);
             }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setShowStopModal(false);
+        } else if (modal.type === 'blacklist') {
+            const userId = modal.data?.id;
+            if (!userId) return;
+            try {
+                const res = await authenticatedFetch('/api/blacklist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setBlacklist(data.blacklist);
+                    showToast(t.blacklist_add_success);
+                } else {
+                    showToast(t.blacklist_add_fail, 'error');
+                }
+            } catch (e) {
+                showToast(t.operation_failed, 'error');
+            } finally {
+                setModal(null);
+            }
+        } else if (modal.type === 'remove_blacklist') {
+            const userId = modal.data?.id;
+            if (!userId) return;
+            try {
+                const res = await authenticatedFetch(`/api/blacklist/${userId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    const data = await res.json();
+                    setBlacklist(data.blacklist);
+                    showToast(t.blacklist_remove_success);
+                } else {
+                    showToast(t.blacklist_remove_fail, 'error');
+                }
+            } catch (e) {
+                showToast(t.operation_failed, 'error');
+            } finally {
+                setModal(null);
+            }
         }
     };
 
@@ -131,11 +265,17 @@ export const Dashboard: React.FC = () => {
             <aside className="sidebar w-64 p-6 flex flex-col gap-8 z-20 bg-white/50 dark:bg-black/40 backdrop-blur-xl">
                 <div className="flex items-center gap-3 px-2">
                     <div className="p-2 bg-purple-500/20 rounded-lg">
-                        <img
-                            src={sanitizeUrl(botStats?.avatar)}
-                            alt="Logo"
-                            className="w-8 h-8 rounded-full"
-                        />
+                        {botStats?.avatar ? (
+                            <img
+                                src={sanitizeUrl(botStats.avatar)}
+                                alt="Logo"
+                                className="w-8 h-8 rounded-full"
+                            />
+                        ) : (
+                            <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-500">
+                                <Server size={18} />
+                            </div>
+                        )}
                     </div>
                     <span className="font-bold text-lg text-primary truncate max-w-[140px]">
                         {botStats?.name || "Bot Panel"}
@@ -145,7 +285,7 @@ export const Dashboard: React.FC = () => {
                 <nav className="flex flex-col gap-2 flex-1">
                     <SidebarItem icon={LayoutDashboard} label={t.dashboard} active activeColor="purple" onClick={() => navigate('/dashboard')} />
                     <SidebarItem icon={Server} label={`${t.server_management} (${userData?.guilds?.length || 0})`} onClick={() => navigate('/servers')} />
-                    <SidebarItem icon={Users} label={t.user_management} />
+                    <SidebarItem icon={Users} label={t.user_management} onClick={() => navigate('/users')} />
                     <SidebarItem icon={MessageSquare} label={t.auto_response} />
                     <SidebarItem icon={Shield} label={t.security} />
                     <SidebarItem icon={Activity} label={t.stats} />
@@ -194,7 +334,7 @@ export const Dashboard: React.FC = () => {
                             <div className="flex gap-2">
                                 {botStats?.status === 'online' ? (
                                     <button
-                                        onClick={() => setShowStopModal(true)}
+                                        onClick={() => setModal({ isOpen: true, type: 'stop' })}
                                         className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-red-500/20"
                                     >
                                         <Square size={16} />
@@ -225,110 +365,218 @@ export const Dashboard: React.FC = () => {
                     <StatCard label={t.uptime} value="99.9%" icon={Activity} color="green" />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
+                {/* Recent Bans & Suspicious Bots */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Recent Bans */}
                     <div className="glass-card p-7 shadow-2xl">
-                        <h3 className="font-bold text-lg mb-6 flex items-center gap-3 text-primary">
-                            <Activity size={22} className="text-purple-600 dark:text-purple-400" />
-                            {t.recent_logs}
-                            <span className="ml-auto text-xs font-medium text-secondary px-2 py-1 bg-black/5 dark:bg-white/5 rounded-md">{t.realtime}</span>
+                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-primary">
+                            <Ban className="text-red-500" />
+                            {t.recent_bans}
                         </h3>
-                        <div className="flex flex-col gap-4">
-                            {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="flex items-center gap-4 p-4 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-all border border-transparent hover:border-black/5 dark:hover:border-white/10 group">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-purple-500/40 group-hover:bg-purple-500 transition-colors" />
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold text-primary group-hover:text-purple-600 dark:group-hover:text-purple-100 transition-colors">{t.log_update}</p>
-                                        <p className="text-xs text-secondary font-medium group-hover:text-primary transition-colors">{i * 2} {t.minutes_ago}</p>
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            {botStats?.recentBans && botStats.recentBans.length > 0 ? (
+                                botStats.recentBans.map((ban: BanInfo, i: number) => (
+                                    <div key={i} className="flex items-center justify-between p-4 bg-red-500/5 border border-red-500/20 rounded-xl hover:bg-red-500/10 transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-red-500/20 overflow-hidden flex items-center justify-center shrink-0">
+                                                {ban.avatar ? (
+                                                    <img src={sanitizeUrl(ban.avatar)} alt={ban.username} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <UserX className="text-red-500" size={20} />
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="font-bold flex items-center gap-2 text-primary truncate">
+                                                    {ban.displayName}
+                                                    <span className="text-xs font-normal text-secondary bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded truncate">@{ban.username}</span>
+                                                </div>
+                                                <div className="text-xs text-secondary mt-1 truncate">
+                                                    {t.banned_from} <span className="font-medium text-primary">{ban.guildName}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(ban.userId);
+                                                showToast(t.copy_id_success);
+                                            }}
+                                            className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-secondary hover:text-primary transition-colors shrink-0"
+                                            title="Copy ID"
+                                        >
+                                            <Copy size={16} />
+                                        </button>
                                     </div>
-                                    <div className="text-secondary opacity-40 group-hover:opacity-100 transition-opacity">
-                                        <SettingsIcon size={14} />
-                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center text-secondary py-8 flex flex-col items-center gap-2">
+                                    <Ban size={40} className="opacity-20" />
+                                    <p>{t.no_bans}</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 
-                    <div className="glass-card p-7 shadow-2xl">
-                        <h3 className="font-bold text-lg mb-6 flex items-center gap-3 text-primary">
-                            <Server size={22} className="text-blue-600 dark:text-blue-400" />
-                            {t.bot_status}
-                        </h3>
-                        <div className="space-y-8 mt-4">
-                            <div>
-                                <div className="flex justify-between text-sm mb-3">
-                                    <span className="text-secondary font-semibold tracking-wide uppercase text-xs">RAM Usage</span>
-                                    <span className="text-primary font-bold bg-purple-500/10 px-2 py-0.5 rounded text-xs">25%</span>
-                                </div>
-                                <div className="h-2.5 bg-black/5 dark:bg-black/40 rounded-full overflow-hidden border border-black/5 dark:border-white/5">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: '25%' }}
-                                        className="h-full bg-gradient-to-r from-purple-600 to-indigo-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-                                    />
+                    {/* Suspicious Bots & Blacklist Management */}
+                    <div className="space-y-6">
+                        {/* Suspicious Bots */}
+                        <div className="glass-card p-7 shadow-2xl">
+                            <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-primary">
+                                <AlertTriangle className="text-yellow-500" />
+                                {t.suspicious_bots}
+                            </h3>
+                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                {botStats?.suspiciousBots && botStats.suspiciousBots.length > 0 ? (
+                                    botStats.suspiciousBots.map((bot: SuspiciousBot, i: number) => (
+                                        <div key={i} className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-xl">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center overflow-hidden shrink-0">
+                                                        {bot.avatar ? (
+                                                            <img src={sanitizeUrl(bot.avatar)} alt={bot.username} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <Server size={14} className="text-yellow-500" />
+                                                        )}
+                                                    </div>
+                                                    <span className="font-bold text-primary">{bot.username}</span>
+                                                </div>
+                                                <button
+                                                    className="px-3 py-1 bg-red-500/10 text-red-600 hover:bg-red-500/20 rounded-lg text-xs font-bold transition-colors border border-red-500/20"
+                                                    onClick={() => setModal({
+                                                        isOpen: true,
+                                                        type: 'blacklist',
+                                                        data: bot
+                                                    })}
+                                                >
+                                                    {t.add_to_blacklist}
+                                                </button>
+                                            </div>
+                                            <div className="text-xs text-secondary mt-2 pl-11">
+                                                <div>Server: <span className="font-medium text-primary">{bot.guildName}</span></div>
+                                                <div className="text-yellow-600 dark:text-yellow-400 mt-1">{t.reason} {bot.reason}</div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center text-secondary py-8 flex flex-col items-center gap-2">
+                                        <Shield size={40} className="opacity-20" />
+                                        <p>{t.no_suspicious}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        {/* Global Blacklist Management */}
+                        <div className="glass-card p-7 shadow-2xl">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold flex items-center gap-2 text-primary">
+                                    <Shield className="text-red-500" />
+                                    {t.global_blacklist}
+                                </h3>
+                                <div className="px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 text-xs font-bold">
+                                    {blacklist.length}
                                 </div>
                             </div>
-                            <div>
-                                <div className="flex justify-between text-sm mb-3">
-                                    <span className="text-secondary font-semibold tracking-wide uppercase text-xs">CPU Usage</span>
-                                    <span className="text-primary font-bold bg-blue-500/10 px-2 py-0.5 rounded text-xs">14%</span>
-                                </div>
-                                <div className="h-2.5 bg-black/5 dark:bg-black/40 rounded-full overflow-hidden border border-black/5 dark:border-white/5">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: '14%' }}
-                                        className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 shadow-[0_0_15px_rgba(59,130,246,0.4)]"
-                                    />
-                                </div>
+
+                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                {blacklist.length > 0 ? (
+                                    blacklist.map((user: any) => {
+                                        if (!user || !user.id) return null;
+                                        return (
+                                            <div key={user.id} className="flex items-center justify-between p-4 bg-white dark:bg-black/20 rounded-xl border border-black/5 dark:border-white/5 hover:border-red-500/30 transition-all shadow-sm">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center overflow-hidden shrink-0">
+                                                        {user.avatar ? (
+                                                            <img src={sanitizeUrl(user.avatar)} alt={user.username} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="text-red-500 font-bold text-lg">
+                                                                {user.username?.charAt(0) || '?'}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="font-bold text-primary truncate flex items-center gap-2">
+                                                            {user.displayName || user.username}
+                                                            <span className="text-[10px] font-normal text-secondary bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded">@{user.username}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <span className="font-mono text-[10px] text-secondary">{user.id}</span>
+                                                            <button
+                                                                onClick={() => {
+                                                                    navigator.clipboard.writeText(user.id);
+                                                                    showToast(t.copy_id_success);
+                                                                }}
+                                                                className="text-secondary hover:text-primary transition-colors"
+                                                            >
+                                                                <Copy size={10} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => setModal({
+                                                        isOpen: true,
+                                                        type: 'remove_blacklist',
+                                                        data: user
+                                                    })}
+                                                    className="p-2 text-secondary hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                    title="Remove"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="text-center text-secondary py-8 flex flex-col items-center gap-2">
+                                        <Shield size={40} className="opacity-20" />
+                                        <p>{t.no_bans}</p>
+                                    </div>
+                                )}
                             </div>
+
+                            <button
+                                onClick={() => navigate('/users')}
+                                className="w-full mt-6 py-3 rounded-xl border border-dashed border-black/10 dark:border-white/10 text-secondary hover:text-primary hover:bg-white/5 transition-all text-sm font-medium"
+                            >
+                                {t.user_management}で詳細設定
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                {/* Bot Stop Confirmation Modal */}
-                <AnimatePresence>
-                    {showStopModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setShowStopModal(false)}
-                                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                            />
-                            <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.9, opacity: 0 }}
-                                className="glass-card max-w-sm w-full p-8 relative z-10 text-center shadow-2xl border-white/20"
-                            >
-                                <div className="mx-auto w-16 h-16 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mb-6">
-                                    <AlertTriangle size={32} />
-                                </div>
-                                <h3 className="text-xl font-bold text-primary mb-2">
-                                    {t.bot_stop_confirm_title}
-                                </h3>
-                                <div className="text-secondary mb-8">
-                                    {t.bot_stop_confirm_desc}
-                                </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => setShowStopModal(false)}
-                                        className="flex-1 px-4 py-2.5 rounded-xl font-bold text-secondary bg-white/5 hover:bg-white/10 transition-colors"
-                                    >
-                                        {t.cancel}
-                                    </button>
-                                    <button
-                                        onClick={handleStopBot}
-                                        className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors"
-                                    >
-                                        {t.execute}
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
             </main>
+
+            {/* Modal */}
+            <AnimatePresence>
+                {modal && (
+                    <ConfirmModal
+                        isOpen={!!modal}
+                        title={
+                            modal.type === 'stop' ? t.bot_stop_confirm_title :
+                                modal.type === 'remove_blacklist' ? t.confirm_blacklist_remove_title :
+                                    'Add to Blacklist?'
+                        }
+                        message={
+                            modal.type === 'stop' ? t.bot_stop_confirm_desc :
+                                modal.type === 'remove_blacklist' ? (t.confirm_blacklist_remove_msg || '').replace('{user}', modal.data?.username || modal.data?.id) :
+                                    `Are you sure you want to ban ${modal.data?.username} (${modal.data?.id}) globally?`
+                        }
+                        confirmText={
+                            modal.type === 'stop' ? t.execute :
+                                modal.type === 'remove_blacklist' ? t.confirm_blacklist_remove_btn :
+                                    t.add_to_blacklist
+                        }
+                        confirmColor="red"
+                        onConfirm={handleConfirmAction}
+                        onCancel={() => setModal(null)}
+                    />
+                )}
+                {toast && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => setToast(null)}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };

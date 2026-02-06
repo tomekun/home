@@ -52,4 +52,82 @@ const saveUserSettings = (userId, settings) => {
     writeStorage(storage);
 };
 
-module.exports = { getUserSettings, saveUserSettings };
+const getBlacklist = () => {
+    const storage = readStorage();
+    return storage.globalBlacklist || [];
+};
+
+const addToBlacklist = (userId) => {
+    const storage = readStorage();
+    if (!storage.globalBlacklist) storage.globalBlacklist = [];
+    if (!storage.globalBlacklist.includes(userId)) {
+        storage.globalBlacklist.push(userId);
+        writeStorage(storage);
+    }
+};
+
+const removeFromBlacklist = (userId) => {
+    const storage = readStorage();
+    if (storage.globalBlacklist) {
+        storage.globalBlacklist = storage.globalBlacklist.filter(id => id !== userId);
+        writeStorage(storage);
+    }
+};
+
+const getBypassList = (guildId) => {
+    const storage = readStorage();
+    if (!storage.serverBypasses) storage.serverBypasses = {};
+    return storage.serverBypasses[guildId] || [];
+};
+
+const addToBypassList = (guildId, userId) => {
+    const storage = readStorage();
+    if (!storage.serverBypasses) storage.serverBypasses = {};
+    if (!storage.serverBypasses[guildId]) storage.serverBypasses[guildId] = [];
+    if (!storage.serverBypasses[guildId].includes(userId)) {
+        storage.serverBypasses[guildId].push(userId);
+        writeStorage(storage);
+    }
+};
+
+const getRecentBans = () => {
+    const storage = readStorage();
+    return storage.recentBans || [];
+};
+
+const addRecentBan = (banInfo) => {
+    const storage = readStorage();
+    if (!storage.recentBans) storage.recentBans = [];
+    storage.recentBans.unshift({
+        ...banInfo,
+        timestamp: Date.now()
+    });
+    // Keep only last 20
+    storage.recentBans = storage.recentBans.slice(0, 20);
+    writeStorage(storage);
+};
+
+const getSuspiciousBots = () => {
+    const storage = readStorage();
+    return storage.suspiciousBots || [];
+};
+
+const saveSuspiciousBots = (bots) => {
+    const storage = readStorage();
+    storage.suspiciousBots = bots;
+    writeStorage(storage);
+};
+
+module.exports = {
+    getUserSettings,
+    saveUserSettings,
+    getBlacklist,
+    addToBlacklist,
+    removeFromBlacklist,
+    getBypassList,
+    addToBypassList,
+    getRecentBans,
+    addRecentBan,
+    getSuspiciousBots,
+    saveSuspiciousBots
+};

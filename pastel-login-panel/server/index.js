@@ -6,11 +6,35 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const csrf = require('csurf');
 
-const { getBotStats, leaveGuild, startBot, stopBot, client: getClient } = require('./bot');
-const { getUserSettings, saveUserSettings } = require('./storage');
+const {
+    getBotStats,
+    leaveGuild,
+    startBot,
+    stopBot,
+    client: getClient,
+    resolveUser
+} = require('./bot');
+const {
+    getUserSettings,
+    saveUserSettings,
+    addToBlacklist,
+    removeFromBlacklist,
+    getBlacklist,
+    addToBypassList,
+    getBypassList
+} = require('./storage');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Global error handlers to prevent process crash
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception thrown:', err);
+});
 
 // Security Middleware
 app.use(helmet({
@@ -18,10 +42,14 @@ app.use(helmet({
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
             "img-src": ["'self'", "data:", "https://cdn.discordapp.com", "https://*.supabase.co", "https://cdn.prod.website-files.com"],
-            "connect-src": ["'self'", "http://localhost:3001"]
+            "connect-src": ["'self'", "http://localhost:3001"],
+            "form-action": ["'self'", "https://discord.com"]
         },
     },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
 }));
+
 app.disable('x-powered-by'); // Explicitly disable to satisfy scanners
 
 // Simple in-memory cache to reduce Discord API load (30s TTL)
@@ -51,26 +79,6 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
-
-// CSRF Protection
-const csrfProtection = csrf({
-    cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
-    }
-});
-app.use(csrfProtection);
-
-// Middleware to set CSRF token in a cookie that the frontend can read
-app.use((req, res, next) => {
-    // This cookie is NOT httpOnly so the frontend JS can read it
-    res.cookie('XSRF-TOKEN', req.csrfToken(), {
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
-    });
-    next();
-});
 
 // Discord OAuth2 Endpoints
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
@@ -127,6 +135,27 @@ app.get('/api/auth/callback', async (req, res) => {
     }
 });
 
+// CSRF Protection
+const csrfProtection = csrf({
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    }
+});
+app.use(csrfProtection);
+
+// Middleware to set CSRF token in a cookie that the frontend can read
+app.use((req, res, next) => {
+    // This cookie is NOT httpOnly so the frontend JS can read it
+    res.cookie('XSRF-TOKEN', req.csrfToken(), {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    });
+    next();
+});
+
+
 app.get('/api/user', async (req, res) => {
     const token = req.cookies.discord_token;
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
@@ -165,13 +194,17 @@ app.get('/api/handshake', async (req, res) => {
             return { user: userRes.data, guilds: guildsRes.data };
         });
         const settings = getUserSettings(userData.user.id);
+        const blacklist = getBlacklist();
+        // Since we don't know which guild is "currently selected" in a generic context, 
+        // we might just return the blacklist here. Bypass lists are per-guild.
 
         res.json({
             user: userData.user,
             userGuilds: userData.guilds,
             botStats: stats,
             botGuilds,
-            settings
+            settings,
+            blacklist
         });
     } catch (error) {
         res.status(401).json({ error: 'Unauthorized' });
@@ -240,9 +273,43 @@ app.post('/api/settings', async (req, res) => {
         saveUserSettings(userResponse.data.id, req.body);
         res.json({ success: true });
     } catch (error) {
-        res.status(401).json({ error: 'Unauthorized' });
+        res.status(500).json({ error: 'Failed to save settings' });
     }
 });
+
+// Blacklist & Bypass Endpoints
+// Blacklist & Bypass Endpoints
+app.post('/api/blacklist', async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'User ID is required' });
+
+    addToBlacklist(userId);
+    const blacklist = await Promise.all(getBlacklist().map(id => resolveUser(id)));
+    res.json({ success: true, blacklist });
+});
+
+app.delete('/api/blacklist/:userId', async (req, res) => {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ error: 'User ID is required' });
+
+    removeFromBlacklist(userId);
+    const blacklist = await Promise.all(getBlacklist().map(id => resolveUser(id)));
+    res.json({ success: true, blacklist });
+});
+
+app.get('/api/blacklist', async (req, res) => {
+    const blacklist = await Promise.all(getBlacklist().map(id => resolveUser(id)));
+    res.json(blacklist);
+});
+
+app.post('/api/bypass', (req, res) => {
+    const { guildId, userId } = req.body;
+    if (!guildId || !userId) return res.status(400).json({ error: 'Guild ID and User ID are required' });
+
+    addToBypassList(guildId, userId);
+    res.json({ success: true, bypassList: getBypassList(guildId) });
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

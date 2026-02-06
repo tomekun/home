@@ -7,7 +7,11 @@ export type TranslationKeys =
     | 'custom_sort_desc' | 'furigana_settings' | 'furigana_desc' | 'furigana_placeholder' | 'save_settings' | 'settings_saved_toast'
     | 'furigana_sort' | 'furigana_sort_desc' | 'theme' | 'light' | 'dark'
     | 'developer_options' | 'developer_mode' | 'developer_mode_desc' | 'bot_start' | 'bot_stop'
-    | 'bot_stop_confirm_title' | 'bot_stop_confirm_desc';
+    | 'bot_stop_confirm_title' | 'bot_stop_confirm_desc'
+    | 'recent_bans' | 'suspicious_bots' | 'global_blacklist' | 'add_to_blacklist' | 'user_id_placeholder'
+    | 'blacklist_desc' | 'no_bans' | 'no_suspicious' | 'banned_from' | 'reason' | 'copy_id_success' | 'blacklist_add_success' | 'blacklist_add_fail'
+    | 'blacklist_remove_success' | 'blacklist_remove_fail' | 'operation_failed'
+    | 'confirm_blacklist_add_title' | 'confirm_blacklist_remove_title' | 'confirm_blacklist_add_btn' | 'confirm_blacklist_remove_btn' | 'confirm_blacklist_add_msg' | 'confirm_blacklist_remove_msg';
 
 export const translations: Record<string, Record<TranslationKeys, string>> = {
     ja: {
@@ -70,7 +74,29 @@ export const translations: Record<string, Record<TranslationKeys, string>> = {
         bot_start: 'ボットを起動',
         bot_stop: 'ボットを停止',
         bot_stop_confirm_title: 'ボットを停止しますか？',
-        bot_stop_confirm_desc: 'ボットを停止すると、Discord上での応答ができなくなります。本当に停止しますか？'
+        bot_stop_confirm_desc: 'ボットを停止すると、Discord上での応答ができなくなります。本当に停止しますか？',
+        recent_bans: '自動BANされたユーザー',
+        suspicious_bots: '不審なBOT検出',
+        global_blacklist: 'グローバルブラックリスト管理',
+        add_to_blacklist: 'ブラックリストに追加',
+        user_id_placeholder: 'ブラックリストに追加するユーザーID',
+        blacklist_desc: 'ここに追加されたユーザーは、このBOTが管理する全てのサーバーで参加時に自動BANされます。サーバー所有者にはDMで通知されます。',
+        no_bans: '最近BANされたユーザーはいません',
+        no_suspicious: '現在、不審なBOTは検出されていません',
+        banned_from: '検出サーバー: ',
+        reason: '理由: ',
+        copy_id_success: 'IDをコピーしました！',
+        blacklist_add_success: 'ユーザーをブラックリストに追加しました。',
+        blacklist_add_fail: 'ブラックリストへの追加に失敗しました。',
+        blacklist_remove_success: 'ユーザーをブラックリストから削除しました。',
+        blacklist_remove_fail: 'ブラックリストからの削除に失敗しました。',
+        operation_failed: '操作に失敗しました。',
+        confirm_blacklist_add_title: 'ブラックリストに追加しますか？',
+        confirm_blacklist_remove_title: 'ブラックリストから削除しますか？',
+        confirm_blacklist_add_btn: '追加する',
+        confirm_blacklist_remove_btn: '削除する',
+        confirm_blacklist_add_msg: '{user} をグローバルブラックリストに追加しますか？このユーザーは全てのサーバーでBANされます。',
+        confirm_blacklist_remove_msg: '{user} をグローバルブラックリストから削除しますか？'
     },
     en: {
         dashboard: 'Dashboard',
@@ -132,6 +158,28 @@ export const translations: Record<string, Record<TranslationKeys, string>> = {
         bot_start: 'Start Bot',
         bot_stop: 'Stop Bot',
         bot_stop_confirm_title: 'Stop Bot?',
-        bot_stop_confirm_desc: 'Stopping the bot will take it offline on Discord. Are you sure?'
+        bot_stop_confirm_desc: 'Stopping the bot will take it offline on Discord. Are you sure?',
+        recent_bans: 'Auto-Banned Users',
+        suspicious_bots: 'Suspicious Bots Detected',
+        global_blacklist: 'Global Blacklist Management',
+        add_to_blacklist: 'ADD',
+        user_id_placeholder: 'User ID to blacklist',
+        blacklist_desc: 'Users added here will be automatically banned when attempting to join any server managed by this bot. Server owners will be notified via DM.',
+        no_bans: 'No recent bans',
+        no_suspicious: 'No suspicious bots detected yet',
+        banned_from: 'Banned from: ',
+        reason: 'Reason: ',
+        copy_id_success: 'ID Copied!',
+        blacklist_add_success: 'User added to global blacklist.',
+        blacklist_add_fail: 'Failed to add to blacklist.',
+        blacklist_remove_success: 'User removed from global blacklist.',
+        blacklist_remove_fail: 'Failed to remove from blacklist.',
+        operation_failed: 'Operation failed.',
+        confirm_blacklist_add_title: 'Add to Blacklist?',
+        confirm_blacklist_remove_title: 'Remove from Blacklist?',
+        confirm_blacklist_add_btn: 'Add User',
+        confirm_blacklist_remove_btn: 'Remove User',
+        confirm_blacklist_add_msg: 'Are you sure you want to add {user} to the global blacklist? They will be banned from all servers.',
+        confirm_blacklist_remove_msg: 'Are you sure you want to remove {user} from the global blacklist?'
     }
 };
