@@ -368,12 +368,12 @@ export const Dashboard: React.FC = () => {
                 {/* Recent Bans & Suspicious Bots */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Recent Bans */}
-                    <div className="glass-card p-7 shadow-2xl">
+                    <div className="glass-card p-7 shadow-2xl flex flex-col h-[675px]">
                         <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-primary">
                             <Ban className="text-red-500" />
                             {t.recent_bans}
                         </h3>
-                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1">
                             {botStats?.recentBans && botStats.recentBans.length > 0 ? (
                                 botStats.recentBans.map((ban: BanInfo, i: number) => (
                                     <div key={i} className="flex items-center justify-between p-4 bg-red-500/5 border border-red-500/20 rounded-xl hover:bg-red-500/10 transition-all">
@@ -395,16 +395,29 @@ export const Dashboard: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(ban.userId);
-                                                showToast(t.copy_id_success);
-                                            }}
-                                            className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-secondary hover:text-primary transition-colors shrink-0"
-                                            title="Copy ID"
-                                        >
-                                            <Copy size={16} />
-                                        </button>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                onClick={() => setModal({
+                                                    isOpen: true,
+                                                    type: 'blacklist',
+                                                    data: { id: ban.userId, username: ban.username, displayName: ban.displayName }
+                                                })}
+                                                className="p-2 hover:bg-red-500/10 rounded-lg text-secondary hover:text-red-500 transition-colors"
+                                                title={t.add_to_blacklist}
+                                            >
+                                                <Shield size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(ban.userId);
+                                                    showToast(t.copy_id_success);
+                                                }}
+                                                className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-secondary hover:text-primary transition-colors"
+                                                title="Copy ID"
+                                            >
+                                                <Copy size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             ) : (
@@ -419,14 +432,14 @@ export const Dashboard: React.FC = () => {
                     {/* Suspicious Bots & Blacklist Management */}
                     <div className="space-y-6">
                         {/* Suspicious Bots */}
-                        <div className="glass-card p-7 shadow-2xl">
+                        <div className="glass-card p-7 shadow-2xl flex flex-col h-[325px]">
                             <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-primary">
                                 <AlertTriangle className="text-yellow-500" />
                                 {t.suspicious_bots}
                             </h3>
-                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1">
                                 {botStats?.suspiciousBots && botStats.suspiciousBots.length > 0 ? (
-                                    botStats.suspiciousBots.map((bot: SuspiciousBot, i: number) => (
+                                    botStats.suspiciousBots.slice(0, 50).map((bot: SuspiciousBot, i: number) => (
                                         <div key={i} className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-xl">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-3">
@@ -465,7 +478,7 @@ export const Dashboard: React.FC = () => {
                             </div>
                         </div>
                         {/* Global Blacklist Management */}
-                        <div className="glass-card p-7 shadow-2xl">
+                        <div className="glass-card p-7 shadow-2xl flex flex-col h-[325px]">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-xl font-bold flex items-center gap-2 text-primary">
                                     <Shield className="text-red-500" />
@@ -476,9 +489,9 @@ export const Dashboard: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1">
                                 {blacklist.length > 0 ? (
-                                    blacklist.map((user: any) => {
+                                    blacklist.slice(0, 50).map((user: any) => {
                                         if (!user || !user.id) return null;
                                         return (
                                             <div key={user.id} className="flex items-center justify-between p-4 bg-white dark:bg-black/20 rounded-xl border border-black/5 dark:border-white/5 hover:border-red-500/30 transition-all shadow-sm">
@@ -552,17 +565,17 @@ export const Dashboard: React.FC = () => {
                         title={
                             modal.type === 'stop' ? t.bot_stop_confirm_title :
                                 modal.type === 'remove_blacklist' ? t.confirm_blacklist_remove_title :
-                                    'Add to Blacklist?'
+                                    t.confirm_blacklist_add_title
                         }
                         message={
                             modal.type === 'stop' ? t.bot_stop_confirm_desc :
                                 modal.type === 'remove_blacklist' ? (t.confirm_blacklist_remove_msg || '').replace('{user}', modal.data?.username || modal.data?.id) :
-                                    `Are you sure you want to ban ${modal.data?.username} (${modal.data?.id}) globally?`
+                                    (t.confirm_blacklist_add_msg || '').replace('{user}', `${modal.data?.username || ''} (${modal.data?.id})`)
                         }
                         confirmText={
                             modal.type === 'stop' ? t.execute :
                                 modal.type === 'remove_blacklist' ? t.confirm_blacklist_remove_btn :
-                                    t.add_to_blacklist
+                                    t.confirm_blacklist_add_btn
                         }
                         confirmColor="red"
                         onConfirm={handleConfirmAction}

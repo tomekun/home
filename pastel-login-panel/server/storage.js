@@ -61,7 +61,7 @@ const addToBlacklist = (userId) => {
     const storage = readStorage();
     if (!storage.globalBlacklist) storage.globalBlacklist = [];
     if (!storage.globalBlacklist.includes(userId)) {
-        storage.globalBlacklist.push(userId);
+        storage.globalBlacklist.unshift(userId);
         writeStorage(storage);
     }
 };
@@ -102,8 +102,8 @@ const addRecentBan = (banInfo) => {
         ...banInfo,
         timestamp: Date.now()
     });
-    // Keep only last 20
-    storage.recentBans = storage.recentBans.slice(0, 20);
+    // Keep only last 50
+    storage.recentBans = storage.recentBans.slice(0, 50);
     writeStorage(storage);
 };
 

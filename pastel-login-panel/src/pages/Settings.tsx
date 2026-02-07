@@ -169,6 +169,7 @@ export const Settings: React.FC = () => {
                                 >
                                     <option value="ja" className="bg-white dark:bg-slate-900">日本語 (Japanese)</option>
                                     <option value="en" className="bg-white dark:bg-slate-900">English</option>
+                                    <option value="ko" className="bg-white dark:bg-slate-900">한국어 (Korean)</option>
                                 </select>
                             </div>
 

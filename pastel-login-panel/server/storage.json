@@ -69,6 +69,14 @@
       "guildName": "Webテスト用",
       "guildId": "1468841076029788312",
       "reason": "Unverified bot with Administrator permissions"
+    },
+    {
+      "id": "1462314722438418444",
+      "username": "リーパにゃん",
+      "avatar": "https://cdn.discordapp.com/avatars/1462314722438418444/473f7dbbd6a7df39c650980a43ee7da5.webp",
+      "guildName": "WebTest2",
+      "guildId": "1469372893178626333",
+      "reason": "Unverified bot with Administrator permissions"
     }
   ],
   "serverBypasses": {
@@ -77,6 +85,26 @@
     ]
   },
   "recentBans": [
+    {
+      "userId": "1137910396322324540",
+      "username": "uminoneco",
+      "displayName": "海のねこ🐾",
+      "avatar": "https://cdn.discordapp.com/avatars/1137910396322324540/ff0b96b389db32f0e4109bcdee802642.webp",
+      "guildId": "1468841076029788312",
+      "guildName": "Webテスト用",
+      "reason": "No reason provided",
+      "timestamp": 1770437508455
+    },
+    {
+      "userId": "1003181460032847874",
+      "username": "tomeitolu",
+      "displayName": "メイド長",
+      "avatar": "https://cdn.discordapp.com/avatars/1003181460032847874/f32267238b35f76f6ba1671e3e2833fe.webp",
+      "guildId": "1468841076029788312",
+      "guildName": "Webテスト用",
+      "reason": "No reason provided",
+      "timestamp": 1770437055112
+    },
     {
       "userId": "1462314722438418444",
       "username": "リーパにゃん",
@@ -109,7 +137,8 @@
     }
   ],
   "globalBlacklist": [
+    "1003181460032847874",
     "1462314722438418444",
-    "1368890121327349870"
+    "1137910396322324540"
   ]
 }
