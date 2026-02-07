@@ -11,7 +11,10 @@ export type TranslationKeys =
     | 'recent_bans' | 'suspicious_bots' | 'global_blacklist' | 'add_to_blacklist' | 'user_id_placeholder'
     | 'blacklist_desc' | 'no_bans' | 'no_suspicious' | 'banned_from' | 'reason' | 'copy_id_success' | 'blacklist_add_success' | 'blacklist_add_fail'
     | 'blacklist_remove_success' | 'blacklist_remove_fail' | 'operation_failed'
-    | 'confirm_blacklist_add_title' | 'confirm_blacklist_remove_title' | 'confirm_blacklist_add_btn' | 'confirm_blacklist_remove_btn' | 'confirm_blacklist_add_msg' | 'confirm_blacklist_remove_msg';
+    | 'confirm_blacklist_add_title' | 'confirm_blacklist_remove_title' | 'confirm_blacklist_add_btn' | 'confirm_blacklist_remove_btn' | 'confirm_blacklist_add_msg' | 'confirm_blacklist_remove_msg'
+    | 'developer_settings' | 'bot_token' | 'bot_client_id' | 'bot_secret_id' | 'add_bot' | 'bot_list' | 'switch_bot' | 'ownership_mismatch_title'
+    | 'ownership_mismatch_msg' | 'switch_account' | 'bot_add_success' | 'bot_remove_success' | 'bot_switch_success' | 'cancel_btn'
+    | 'shared_blacklist' | 'shared_autoban' | 'individual' | 'shared' | 'dev_settings_desc';
 
 export const translations: Record<string, Record<TranslationKeys, string>> = {
     ja: {
@@ -96,7 +99,26 @@ export const translations: Record<string, Record<TranslationKeys, string>> = {
         confirm_blacklist_add_btn: '追加する',
         confirm_blacklist_remove_btn: '削除する',
         confirm_blacklist_add_msg: '{user} をグローバルブラックリストに追加しますか？このユーザーは全てのサーバーでBANされます。',
-        confirm_blacklist_remove_msg: '{user} をグローバルブラックリストから削除しますか？'
+        confirm_blacklist_remove_msg: '{user} をグローバルブラックリストから削除しますか？',
+        developer_settings: '開発者設定',
+        bot_token: 'ボットトークン (TOKEN)',
+        bot_client_id: 'クライアントID (ClientID)',
+        bot_secret_id: '秘密鍵 (SecretID)',
+        add_bot: 'BOTを追加',
+        bot_list: 'ボットアカウントリスト',
+        switch_bot: '切り替え',
+        ownership_mismatch_title: '所有権の不一致',
+        ownership_mismatch_msg: '自身のアカウントにないBOTの追加はできません。アカウントを切り替えてください。',
+        switch_account: 'アカウントを切り替える',
+        bot_add_success: 'ボットを追加しました',
+        bot_remove_success: 'ボットを削除しました',
+        bot_switch_success: 'ボットを切り替えました',
+        cancel_btn: 'キャンセル',
+        shared_blacklist: 'グローバルブラックリストの共有',
+        shared_autoban: '自動BANリストの共有',
+        individual: '個別設定',
+        shared: '共有設定',
+        dev_settings_desc: '全ボット共通でデータを扱うか、ボットごとに個別に扱うかを設定します。',
     },
     en: {
         dashboard: 'Dashboard',
@@ -180,7 +202,26 @@ export const translations: Record<string, Record<TranslationKeys, string>> = {
         confirm_blacklist_add_btn: 'Add User',
         confirm_blacklist_remove_btn: 'Remove User',
         confirm_blacklist_add_msg: 'Are you sure you want to add {user} to the global blacklist? They will be banned from all servers.',
-        confirm_blacklist_remove_msg: 'Are you sure you want to remove {user} from the global blacklist?'
+        confirm_blacklist_remove_msg: 'Are you sure you want to remove {user} from the global blacklist?',
+        developer_settings: 'Developer Settings',
+        bot_token: 'Bot Token (TOKEN)',
+        bot_client_id: 'Client ID (ClientID)',
+        bot_secret_id: 'Secret ID (SecretID)',
+        add_bot: 'Add BOT',
+        bot_list: 'Bot Account List',
+        switch_bot: 'Switch',
+        ownership_mismatch_title: 'Ownership Mismatch',
+        ownership_mismatch_msg: 'You cannot add a bot that does not belong to your account. Please switch accounts.',
+        switch_account: 'Switch Account',
+        bot_add_success: 'Bot added successfully',
+        bot_remove_success: 'Bot removed successfully',
+        bot_switch_success: 'Bot switched successfully',
+        cancel_btn: 'Cancel',
+        shared_blacklist: 'Shared Global Blacklist',
+        shared_autoban: 'Shared Auto-Ban List',
+        individual: 'Individual',
+        shared: 'Shared',
+        dev_settings_desc: 'Configure whether data is shared across all bots or handled individually per bot.',
     },
     ko: {
         dashboard: '대시보드',
@@ -264,6 +305,25 @@ export const translations: Record<string, Record<TranslationKeys, string>> = {
         confirm_blacklist_add_btn: '추가하기',
         confirm_blacklist_remove_btn: '삭제하기',
         confirm_blacklist_add_msg: '{user} 사용자를 글로벌 블랙리스트에 추가하시겠습니까? 이 사용자는 모든 서버에서 차단됩니다.',
-        confirm_blacklist_remove_msg: '{user} 사용자를 글로벌 블랙리스트에서 삭제하시겠습니까?'
+        confirm_blacklist_remove_msg: '{user} 사용자를 글로벌 블랙리스트에서 삭제하시겠습니까?',
+        developer_settings: '개발자 설정',
+        bot_token: '봇 토큰 (TOKEN)',
+        bot_client_id: '클라이언트 ID (ClientID)',
+        bot_secret_id: '비밀번호 (SecretID)',
+        add_bot: 'BOT 추가',
+        bot_list: '봇 계정 리스트',
+        switch_bot: '전환',
+        ownership_mismatch_title: '소유권 불일치',
+        ownership_mismatch_msg: '자신의 계정에 없는 BOT은 추가할 수 없습니다. 계정을 전환해 주세요.',
+        switch_account: '계정 전환',
+        bot_add_success: '봇이 추가되었습니다',
+        bot_remove_success: '봇이 삭제되었습니다',
+        bot_switch_success: '봇이 전환되었습니다',
+        cancel_btn: '취소',
+        shared_blacklist: '글로벌 블랙리스트 공유',
+        shared_autoban: '자동 차단 목록 공유',
+        individual: '개별 설정',
+        shared: '공유 설정',
+        dev_settings_desc: '모든 봇에서 데이터를 공유할지, 봇별로 개별적으로 처리할지 설정합니다.',
     }
 };

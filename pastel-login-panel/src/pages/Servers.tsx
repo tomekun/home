@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, ExternalLink, Trash2, AlertTriangle, SortAsc, SortDesc, Clock, Calendar, ChevronUp, ChevronDown, GripVertical, Save, Info } from 'lucide-react';
+import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, ExternalLink, Trash2, AlertTriangle, SortAsc, SortDesc, Clock, Calendar, ChevronUp, ChevronDown, GripVertical, Save, Info, Code } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
 import { sanitizeUrl } from '../utils/security';
@@ -50,7 +50,7 @@ export const Servers: React.FC = () => {
     const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
     const [botStats, setBotStats] = useState<any>(null);
-    const [settings, setSettings] = useState<any>(null);
+    const [settings, setSettings] = useState<any>({ theme: 'light', language: 'ja' });
     const [botGuilds, setBotGuilds] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<SortOption>('join');
@@ -89,6 +89,16 @@ export const Servers: React.FC = () => {
     useEffect(() => {
         fetchAllData();
     }, []);
+
+    useEffect(() => {
+        if (settings?.theme) {
+            if (settings.theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+    }, [settings?.theme]);
 
     const lang = settings?.language || 'ja';
     const t = translations[lang] || translations.ja;
@@ -190,7 +200,7 @@ export const Servers: React.FC = () => {
         if (!showModal) return;
 
         if (showModal.type === 'invite') {
-            const clientId = '1468812333492211954';
+            const clientId = botStats?.clientId || '1468812333492211954';
             const inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands&guild_id=${showModal.guild.id}&disable_guild_select=true`;
             window.open(inviteUrl, '_blank');
             setShowModal(null);
@@ -246,6 +256,9 @@ export const Servers: React.FC = () => {
                     <SidebarItem icon={Bell} label={t.notifications} />
                     <div className="my-4 h-[1px] bg-black/5 dark:bg-white/10" />
                     <SidebarItem icon={SettingsIcon} label={t.settings} onClick={() => tryNavigate('/settings')} />
+                    {settings?.isDevModeEnabled && (
+                        <SidebarItem icon={Code} label={t.developer_settings} onClick={() => tryNavigate('/dev-settings')} activeColor="blue" />
+                    )}
                 </nav>
 
                 <div className="mt-auto">

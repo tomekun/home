@@ -21,7 +21,15 @@ const {
     removeFromBlacklist,
     getBlacklist,
     addToBypassList,
-    getBypassList
+    getBypassList,
+    getBotAccounts,
+    addBotAccount,
+    removeBotAccount,
+    setActiveBot,
+    getActiveBotToken,
+    readStorage,
+    getDevSettings,
+    saveDevSettings
 } = require('./storage');
 
 const app = express();
@@ -161,7 +169,7 @@ app.get('/api/user', async (req, res) => {
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
-        const userData = await getCachedOrFetch(token, 'user', async () => {
+        const data = await getCachedOrFetch(token, 'user', async () => {
             const userRes = await axios.get('https://discord.com/api/users/@me', {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -170,7 +178,7 @@ app.get('/api/user', async (req, res) => {
             });
             return { user: userRes.data, guilds: guildsRes.data };
         });
-        res.json(userData);
+        res.json(data);
     } catch (error) {
         res.status(401).json({ error: 'Token expired or invalid' });
     }
@@ -267,12 +275,17 @@ app.post('/api/settings', async (req, res) => {
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
-        const userResponse = await axios.get('https://discord.com/api/users/@me', {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        saveUserSettings(userResponse.data.id, req.body);
+        const data = await getCachedOrFetch(token, 'user', () =>
+            axios.get('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${token}` } }).then(r => ({ user: r.data }))
+        );
+        const userId = data.user.id;
+
+        // Protect bot management fields from being overwritten by general settings
+        const { botAccounts, activeBotId, ...otherSettings } = req.body;
+        saveUserSettings(userId, otherSettings);
         res.json({ success: true });
     } catch (error) {
+        console.error('Settings save error:', error);
         res.status(500).json({ error: 'Failed to save settings' });
     }
 });
@@ -310,6 +323,116 @@ app.post('/api/bypass', (req, res) => {
     res.json({ success: true, bypassList: getBypassList(guildId) });
 });
 
+
+// Developer Options - Bot Management
+app.get('/api/dev/bots', async (req, res) => {
+    const token = req.cookies.discord_token;
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        const bots = getBotAccounts();
+        const storage = readStorage(); // Direct read for activeBotId
+        res.json({ bots, activeBotId: storage.activeBotId });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch bot accounts' });
+    }
+});
+
+app.get('/api/dev/settings', async (req, res) => {
+    const token = req.cookies.discord_token;
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        const { getDevSettings } = require('./storage');
+        res.json(getDevSettings());
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch dev settings' });
+    }
+});
+
+app.post('/api/dev/settings', async (req, res) => {
+    const token = req.cookies.discord_token;
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        const { saveDevSettings } = require('./storage');
+        saveDevSettings(req.body);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to save dev settings' });
+    }
+});
+
+app.post('/api/dev/bots', async (req, res) => {
+    const userToken = req.cookies.discord_token;
+    const { token, clientId, secretId } = req.body;
+    if (!userToken) return res.status(401).json({ error: 'Unauthorized' });
+    if (!token || !clientId) return res.status(400).json({ error: 'Token and Client ID are required' });
+
+    try {
+        const data = await getCachedOrFetch(userToken, 'user', () =>
+            axios.get('https://discord.com/api/users/@me', { headers: { Authorization: `Bearer ${userToken}` } }).then(r => ({ user: r.data }))
+        );
+        const user = data.user;
+
+        // Verify bot token
+        let botInfo;
+        try {
+            const botRes = await axios.get('https://discord.com/api/v10/applications/@me', {
+                headers: { Authorization: `Bot ${token}` }
+            });
+            botInfo = botRes.data;
+        } catch (err) {
+            return res.status(400).json({ error: 'Invalid Bot Token or Client ID' });
+        }
+
+        const botAccount = {
+            id: botInfo.id,
+            name: botInfo.name,
+            token,
+            clientId,
+            secretId,
+            avatar: botInfo.icon ? `https://cdn.discordapp.com/app-icons/${botInfo.id}/${botInfo.icon}.png` : null
+        };
+
+        addBotAccount(botAccount);
+        res.json({ success: true, bot: botAccount });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Failed to add bot' });
+    }
+});
+
+app.delete('/api/dev/bots/:id', async (req, res) => {
+    const token = req.cookies.discord_token;
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        removeBotAccount(req.params.id);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to remove bot' });
+    }
+});
+
+app.post('/api/dev/bots/switch', async (req, res) => {
+    const token = req.cookies.discord_token;
+    const { clientId } = req.body;
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        setActiveBot(clientId);
+        const botToken = getActiveBotToken();
+
+        // Restart bot with new token
+        await stopBot();
+        const started = await startBot(botToken);
+
+        res.json({ success: started });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to switch bot' });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

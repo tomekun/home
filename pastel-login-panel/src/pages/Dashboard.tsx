@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, Play, Square, AlertTriangle, Copy, Ban, UserX, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, Play, Square, AlertTriangle, Copy, Ban, UserX, CheckCircle, XCircle, Trash2, Code } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { translations } from '../utils/translations';
 import { sanitizeUrl } from '../utils/security';
@@ -116,7 +116,7 @@ export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
     const [botStats, setBotStats] = useState<any>(null);
-    const [settings, setSettings] = useState<any>(null);
+    const [settings, setSettings] = useState<any>({ theme: 'light', language: 'ja' });
     const [blacklist, setBlacklist] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState<{ isOpen: boolean, type: 'stop' | 'blacklist' | 'remove_blacklist', data?: any } | null>(null);
@@ -146,6 +146,16 @@ export const Dashboard: React.FC = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (settings?.theme) {
+            if (settings.theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+    }, [settings?.theme]);
 
     const refreshBotStatus = async () => {
         try {
@@ -292,6 +302,9 @@ export const Dashboard: React.FC = () => {
                     <SidebarItem icon={Bell} label={t.notifications} />
                     <div className="my-4 h-[1px] bg-black/5 dark:bg-white/10" />
                     <SidebarItem icon={SettingsIcon} label={t.settings} onClick={() => navigate('/settings')} />
+                    {settings?.isDevModeEnabled && (
+                        <SidebarItem icon={Code} label={t.developer_settings} onClick={() => navigate('/dev-settings')} activeColor="blue" />
+                    )}
                 </nav>
 
                 <div className="mt-auto">

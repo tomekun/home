@@ -20,8 +20,14 @@ export const Login: React.FC = () => {
         window.location.href = 'http://localhost:3001/api/auth/login';
     };
 
+    useEffect(() => {
+        // Default to light mode for login unless we know otherwise
+        // (In a real app, we might check localStorage)
+        document.documentElement.classList.remove('dark');
+    }, []);
+
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500 bg-slate-100 dark:bg-[#07070a]">
             <div className="mesh-background" />
 
             <motion.div
@@ -38,10 +44,10 @@ export const Login: React.FC = () => {
                     <div className="absolute inset-0 bg-white/10 blur-2xl rounded-full" />
                 </div>
 
-                <h1 className="text-3xl font-bold mb-2 tracking-tight text-white uppercase">
+                <h1 className="text-3xl font-bold mb-2 tracking-tight text-primary uppercase">
                     {botInfo?.name || "Pastel BOT"}
                 </h1>
-                <p className="text-white/70 mb-8 font-medium">Control Panel</p>
+                <p className="text-secondary mb-8 font-medium">Control Panel</p>
 
                 <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/20 to-transparent mb-8" />
 

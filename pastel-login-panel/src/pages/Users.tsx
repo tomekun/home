@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, Trash2, Plus, Copy, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Settings as SettingsIcon, Shield, Activity, Bell, Server, Users, MessageSquare, LogOut, Trash2, Plus, Copy, CheckCircle, XCircle, AlertTriangle, Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { translations } from '../utils/translations';
 import { sanitizeUrl } from '../utils/security';
@@ -76,7 +76,7 @@ export const UsersPage: React.FC = () => {
     const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
     const [botStats, setBotStats] = useState<any>(null);
-    const [settings, setSettings] = useState<any>(null);
+    const [settings, setSettings] = useState<any>({ theme: 'light', language: 'ja' });
     const [blacklist, setBlacklist] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
@@ -114,6 +114,16 @@ export const UsersPage: React.FC = () => {
     useEffect(() => {
         fetchInitialData();
     }, [navigate]);
+
+    useEffect(() => {
+        if (settings?.theme) {
+            if (settings.theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+    }, [settings?.theme]);
 
     useEffect(() => {
         if (toast) {
@@ -213,6 +223,9 @@ export const UsersPage: React.FC = () => {
                     <SidebarItem icon={Bell} label={t.notifications} />
                     <div className="my-4 h-[1px] bg-black/5 dark:bg-white/10" />
                     <SidebarItem icon={SettingsIcon} label={t.settings} onClick={() => navigate('/settings')} />
+                    {settings?.isDevModeEnabled && (
+                        <SidebarItem icon={Code} label={t.developer_settings} onClick={() => navigate('/dev-settings')} activeColor="blue" />
+                    )}
                 </nav>
 
                 <div className="mt-auto">
@@ -287,7 +300,7 @@ export const UsersPage: React.FC = () => {
                             {blacklist.length > 0 ? (
                                 <div className="grid grid-cols-1 gap-3">
                                     <AnimatePresence>
-                                        {blacklist.map((user: any, i: number) => {
+                                        {blacklist.map((user: any) => {
                                             if (!user || user.id === '' || user.id === null || user.id === undefined) return null;
                                             return (
                                                 <motion.div

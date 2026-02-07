@@ -23,7 +23,7 @@ export const Settings: React.FC = () => {
     const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
     const [botStats, setBotStats] = useState<any>(null);
-    const [settings, setSettings] = useState<any>(null);
+    const [settings, setSettings] = useState<any>({ theme: 'light', language: 'ja' });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [savedNotice, setSavedNotice] = useState(false);
@@ -128,6 +128,9 @@ export const Settings: React.FC = () => {
                     <SidebarItem icon={Bell} label={t.notifications} />
                     <div className="my-4 h-[1px] bg-black/5 dark:bg-white/10" />
                     <SidebarItem icon={SettingsIcon} label={t.settings} active activeColor="purple" />
+                    {settings.isDevModeEnabled && (
+                        <SidebarItem icon={Code} label={t.developer_settings} onClick={() => navigate('/dev-settings')} activeColor="blue" />
+                    )}
                 </nav>
 
                 <div className="mt-auto">

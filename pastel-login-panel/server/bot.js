@@ -7,7 +7,8 @@ const {
     getSuspiciousBots,
     saveSuspiciousBots,
     getBypassList,
-    addToBypassList
+    addToBypassList,
+    getActiveBotToken
 } = require('./storage');
 
 let client = new Client({
@@ -26,9 +27,12 @@ const setupClientEvents = (c) => {
     const onReady = async (readyClient) => {
         if (readyFired) return;
         readyFired = true;
-        console.log(`Logged in as ${readyClient.user.tag}!`);
         try {
+            console.log(`Logged in as ${readyClient.user.tag}! Connected to ${readyClient.guilds.cache.size} guilds.`);
             const app = await readyClient.application.fetch();
+            console.log(`[BOT] Logged in as: ${readyClient.user.tag} (${readyClient.user.id})`);
+            console.log(`[BOT] Servers: ${readyClient.guilds.cache.size}`);
+            console.log(`[BOT] Intents: ${readyClient.options.intents.toArray().join(', ')}`);
             botStats.status = 'online';
             botStats.guildCount = readyClient.guilds.cache.size;
             botStats.userCount = readyClient.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
@@ -36,10 +40,10 @@ const setupClientEvents = (c) => {
             botStats.avatar = readyClient.user.displayAvatarURL();
 
             // Register Slash Commands
-            const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN);
-            console.log('[BOT] Registering slash commands...');
+            const rest = new REST({ version: '10' }).setToken(readyClient.token);
+            console.log(`[BOT] Registering slash commands for App ID: ${readyClient.application.id} (Bot ID: ${readyClient.user.id})...`);
             await rest.put(
-                Routes.applicationCommands(readyClient.user.id),
+                Routes.applicationCommands(readyClient.application.id),
                 { body: [{ name: 'ping', description: 'Replies with Pong!' }] },
             );
             console.log('[BOT] Slash commands registered successfully.');
@@ -83,10 +87,14 @@ const setupClientEvents = (c) => {
     });
 
     c.on('guildMemberAdd', async (member) => {
-        const blacklist = getBlacklist();
+        const botId = member.guild.client.user.id;
+        const blacklist = getBlacklist(botId);
         const bypassList = getBypassList(member.guild.id);
 
+        console.log(`[BOT] Member Joined: ${member.user.tag} in ${member.guild.name}. Checking blacklist for Bot ID: ${botId}...`);
+
         if (blacklist.includes(member.id) && !bypassList.includes(member.id)) {
+            console.log(`[BOT] Blacklisted User Detected: ${member.user.tag}. Executing ban...`);
             try {
                 // Determine if we should notify
                 const owner = await member.guild.fetchOwner();
@@ -119,10 +127,19 @@ const setupClientEvents = (c) => {
         }
     });
 
+    c.on('raw', (packet) => {
+        if (packet.t === 'GUILD_BAN_ADD') {
+            console.log(`[DEBUG-RAW] GUILD_BAN_ADD event received for Bot ID: ${c.user.id}`);
+        }
+    });
+
     c.on('guildBanAdd', async (ban) => {
         try {
             // Attempt to fetch more details if partial
             if (ban.partial) await ban.fetch();
+
+            const botId = ban.client.user.id;
+            console.log(`[BOT] Ban detected in ${ban.guild.name} for ${ban.user.tag}. Recording for Bot ID: ${botId}...`);
 
             addRecentBan({
                 userId: ban.user.id,
@@ -132,7 +149,7 @@ const setupClientEvents = (c) => {
                 guildId: ban.guild.id,
                 guildName: ban.guild.name,
                 reason: ban.reason || 'No reason provided'
-            });
+            }, botId);
             console.log(`[BOT] Recorded ban for ${ban.user.tag} in ${ban.guild.name}`);
         } catch (err) {
             console.error('Error handling guildBanAdd:', err);
@@ -174,6 +191,10 @@ const setupClientEvents = (c) => {
         saveSuspiciousBots(suspicious);
     };
 
+    c.on('error', (error) => {
+        console.error('[BOT] Discord Client Error:', error);
+    });
+
     c.once('ready', (readyClient) => {
         onReady(readyClient);
         // Periodic scans
@@ -184,9 +205,11 @@ const setupClientEvents = (c) => {
 
 setupClientEvents(client);
 
-if (process.env.DISCORD_BOT_TOKEN) {
+const initialToken = getActiveBotToken();
+if (initialToken) {
     try {
-        client.login(process.env.DISCORD_BOT_TOKEN).catch(err => {
+        console.log('[BOT] Starting initial login with active bot token...');
+        client.login(initialToken).catch(err => {
             console.error('[BOT] Error during initial login:', err.message);
         });
     } catch (err) {
@@ -199,13 +222,15 @@ const getBotStats = async () => {
 
     try {
         const app = await client.application.fetch();
+        const botId = client.user.id;
         return {
             status: 'online',
+            clientId: app.id,
             guildCount: client.guilds.cache.size,
             userCount: client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0),
             name: app.name,
             avatar: client.user.displayAvatarURL(),
-            recentBans: getRecentBans(),
+            recentBans: getRecentBans(botId),
             suspiciousBots: getSuspiciousBots()
         };
     } catch (error) {
@@ -227,25 +252,30 @@ const leaveGuild = async (guildId) => {
     return false;
 };
 
-const startBot = async () => {
-    if (client && client.isReady()) {
-        console.log('[BOT] Bot is already online.');
+const startBot = async (token = process.env.DISCORD_BOT_TOKEN) => {
+    if (client && client.isReady() && client.token === token) {
+        console.log('[BOT] Bot is already online with this token.');
         return true;
     }
 
     try {
         console.log('[BOT] Starting bot...');
-        // If client exists but not ready, destroy it safely first
         if (client) {
             try { client.destroy(); } catch (e) { }
+            client = null;
         }
 
         client = new Client({
-            intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+            intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration],
         });
         setupClientEvents(client);
 
-        await client.login(process.env.DISCORD_BOT_TOKEN);
+        if (!token) {
+            console.error('[BOT] No token available to start bot.');
+            return false;
+        }
+
+        await client.login(token);
 
         return new Promise((resolve) => {
             if (client.isReady()) {
